@@ -1,0 +1,647 @@
+@page "/"
+@using System.Diagnostics
+@using System.Text
+@using OpenccNetLib
+@inject IJSRuntime Js
+@implements IAsyncDisposable
+
+<PageTitle>OpenccNetLib — CJK Conversion Tool</PageTitle>
+
+<h1>OpenccNetLib — CJK Conversion Tool</h1>
+
+<div class="row config-row">
+    <label for="config">Config:</label>
+    <select id="config" value="@_config" @onchange="OnConfigChanged">
+        @foreach (var config in _configs)
+        {
+            <option value="@config">@config</option>
+        }
+    </select>
+    <span>@ConfigDescription</span>
+</div>
+
+<div class="row">
+    <strong>Supported configs:</strong>
+    <span>@string.Join(", ", _configs)</span>
+</div>
+
+<div class="editor-grid">
+    <div>
+        <h3>Input</h3>
+        <div class="toolbar">
+            <button @onclick="PasteAsync">Paste</button>
+            <button @onclick="NormalizeAsync">Normalize</button>
+            <button @onclick="ClearInputAsync">Clear</button>
+        </div>
+        <div id="editor-left" class="editor-box"></div>
+    </div>
+
+    <div>
+        <h3>Output</h3>
+        <div class="toolbar">
+            <button @onclick="CopyAsync">Copy</button>
+            <button @onclick="ClearOutputAsync">Clear</button>
+        </div>
+        <div id="editor-right" class="editor-box"></div>
+    </div>
+</div>
+
+<div class="row">
+    <label>
+        <input type="checkbox" @bind="_punctuation" />
+        Enable punctuation conversion
+    </label>
+</div>
+
+<div class="row file-row">
+    <label class="button-like">
+        Open File
+        <InputFile class="hidden-file-input"
+                   OnChange="OpenTextFileAsync"
+                   accept=".txt,.md" />
+    </label>
+
+    <label for="textEncoding">Encoding:</label>
+    <select id="textEncoding"
+            value="@_textEncoding"
+            @onchange="OnEncodingChangedAsync">
+        <option value="utf-8">UTF-8</option>
+        <option value="utf-16le">UTF-16 LE</option>
+        <option value="utf-16be">UTF-16 BE</option>
+        <option value="gb18030">GB18030 / GBK</option>
+        <option value="big5">Big5</option>
+        <option value="shift_jis">Shift-JIS</option>
+    </select>
+
+    <button @onclick="ConvertTextAsync">Convert</button>
+</div>
+
+<div class="office-drop">
+    <strong>Click to open or drop a document, EPUB or text file here</strong>
+    <small>DOCX, XLSX, PPTX, EPUB, TXT — converted locally in your browser; nothing is uploaded</small>
+    <small>TXT uses the selected encoding; Office documents and EPUB handle text encoding internally.</small>
+
+    <InputFile class="office-file-input"
+               OnChange="ConvertOfficeFileAsync"
+               accept=".docx,.xlsx,.pptx,.epub,.txt" />
+</div>
+
+@if (_officeOutputBytes is not null && !string.IsNullOrEmpty(_officeOutputName))
+{
+    <div class="office-result">
+        <span>Ready: @_officeOutputName </span>
+        <button @onclick="DownloadOfficeAsync">Download converted file</button>
+    </div>
+}
+
+<h3>Status</h3>
+<pre class="status">@_status</pre>
+
+@code {
+    private const long MaxFileBytes = 512L * 1024 * 1024;
+
+    private readonly string[] _configs =
+        Opencc.GetSupportedConfigs().ToArray();
+
+    private readonly Dictionary<string, string> _configDescriptions =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["s2t"] = "Simplified Chinese → Traditional Chinese",
+            ["t2s"] = "Traditional Chinese → Simplified Chinese",
+            ["s2tw"] = "Simplified Chinese → Traditional Chinese (Taiwan)",
+            ["s2twp"] = "Simplified Chinese → Traditional Chinese (Taiwan, phrases)",
+            ["tw2s"] = "Traditional Chinese (Taiwan) → Simplified Chinese",
+            ["tw2sp"] = "Traditional Chinese (Taiwan, phrases) → Simplified Chinese",
+            ["s2hk"] = "Simplified Chinese → Traditional Chinese (Hong Kong)",
+            ["s2hkp"] = "Simplified Chinese → Traditional Chinese (Hong Kong, phrases)",
+            ["hk2s"] = "Traditional Chinese (Hong Kong) → Simplified Chinese",
+            ["hk2sp"] = "Traditional Chinese (Hong Kong, phrases) → Simplified Chinese",
+            ["t2tw"] = "Traditional Chinese → Traditional Chinese (Taiwan)",
+            ["t2twp"] = "Traditional Chinese → Traditional Chinese (Taiwan, phrases)",
+            ["tw2t"] = "Traditional Chinese (Taiwan) → Traditional Chinese",
+            ["tw2tp"] = "Traditional Chinese (Taiwan, phrases) → Traditional Chinese",
+            ["t2hk"] = "Traditional Chinese → Traditional Chinese (Hong Kong)",
+            ["t2hkp"] = "Traditional Chinese → Traditional Chinese (Hong Kong, phrases)",
+            ["hk2t"] = "Traditional Chinese (Hong Kong) → Traditional Chinese",
+            ["hk2tp"] = "Traditional Chinese (Hong Kong, phrases) → Traditional Chinese",
+            ["t2jp"] = "Traditional Chinese → Japanese Shinjitai",
+            ["jp2t"] = "Japanese Shinjitai → Traditional Chinese"
+        };
+
+    private Opencc _cc = null!;
+    private DotNetObjectReference<Home>? _selfReference;
+
+    private string _config = "s2t";
+    private bool _punctuation;
+    private string _status = "Loading engine...";
+    private bool _editorsReady;
+
+    private string _textEncoding = "utf-8";
+    private string _openedTextFileName = "";
+    private byte[]? _openedTextFileBytes;
+    private bool _preserveOpenedTextFile;
+
+    private byte[]? _officeOutputBytes;
+    private string _officeOutputName = "";
+    private string _officeOutputMime = "application/octet-stream";
+
+    private string ConfigDescription =>
+        _configDescriptions.TryGetValue(_config, out var description)
+            ? description
+            : "";
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            _cc = new Opencc(_config);
+
+            var version = typeof(Opencc).Assembly
+                .GetName()
+                .Version?
+                .ToString(3) ?? "unknown";
+
+            _status =
+                $"Engine v{version} loaded. ({_configs.Length} configs available)";
+        }
+        catch (Exception ex)
+        {
+            _status = $"Failed to load OpenccNetLib.\n{ex}";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        _selfReference = DotNetObjectReference.Create(this);
+
+        await Js.InvokeVoidAsync(
+            "openccDemo.initializeEditors",
+            "editor-left",
+            "editor-right",
+            "汉字转换测试");
+
+        await Js.InvokeVoidAsync(
+            "openccDemo.setInputChangedCallback",
+            _selfReference,
+            nameof(OnCodeMirrorInputChanged));
+
+        _editorsReady = true;
+    }
+
+    [JSInvokable]
+    public Task OnCodeMirrorInputChanged()
+    {
+        if (!_preserveOpenedTextFile)
+            ClearOpenedTextFile();
+
+        return Task.CompletedTask;
+    }
+
+    private void OnConfigChanged(ChangeEventArgs e)
+    {
+        var config = e.Value?.ToString()?.Trim() ?? "";
+
+        if (!Opencc.IsValidConfig(config))
+        {
+            _status = $"Invalid config: {config}";
+            return;
+        }
+
+        _cc.SetConfig(config);
+        _config = _cc.GetConfig();
+        _status = $"Current config set to: {_config}";
+    }
+
+    private async Task PasteAsync()
+    {
+        if (!_editorsReady)
+            return;
+
+        try
+        {
+            await Js.InvokeVoidAsync("openccDemo.pasteToInput");
+            _status = "Pasted clipboard text into input.";
+        }
+        catch (Exception ex)
+        {
+            _status =
+                $"Paste failed. Browser may have blocked clipboard access.\n{ex.Message}";
+        }
+    }
+
+    private async Task CopyAsync()
+    {
+        if (!_editorsReady)
+            return;
+
+        try
+        {
+            await Js.InvokeVoidAsync("openccDemo.copyOutput");
+            _status = "Copied output to clipboard.";
+        }
+        catch (Exception ex)
+        {
+            _status =
+                $"Copy failed. Browser may have blocked clipboard access.\n{ex.Message}";
+        }
+    }
+
+    private async Task NormalizeAsync()
+    {
+        if (!_editorsReady)
+            return;
+
+        try
+        {
+            var text =
+                await Js.InvokeAsync<string>("openccDemo.getInputText");
+
+            var normalized =
+                _cc.NormalizeCompatExtended(text);
+
+            await SetInputTextAsync(
+                normalized,
+                preserveOpenedFileBytes: false);
+
+            await Js.InvokeVoidAsync("openccDemo.focusInput");
+
+            _status =
+                "Input normalized with extended Unicode compatibility normalization.";
+        }
+        catch (Exception ex)
+        {
+            _status = $"Normalization failed: {ex.Message}";
+        }
+    }
+
+    private async Task ClearInputAsync()
+    {
+        if (!_editorsReady)
+            return;
+
+        ClearOpenedTextFile();
+
+        await Js.InvokeVoidAsync("openccDemo.clearInput");
+        await Js.InvokeVoidAsync("openccDemo.focusInput");
+
+        _status = "Input cleared.";
+    }
+
+    private async Task ClearOutputAsync()
+    {
+        if (!_editorsReady)
+            return;
+
+        await Js.InvokeVoidAsync("openccDemo.clearOutput");
+        _status = "Output cleared.";
+    }
+
+    private async Task ConvertTextAsync()
+    {
+        if (!_editorsReady)
+            return;
+
+        try
+        {
+            var input =
+                await Js.InvokeAsync<string>("openccDemo.getInputText");
+
+            var stopwatch = Stopwatch.StartNew();
+            var converted = _cc.Convert(input, _punctuation);
+            stopwatch.Stop();
+
+            var inputCharCount = CountUnicodeScalars(input);
+            var outputCharCount = CountUnicodeScalars(converted);
+
+            var language = Opencc.ZhoCheck(converted) switch
+            {
+                1 => "Traditional Chinese",
+                2 => "Simplified Chinese",
+                _ => "Other"
+            };
+
+            var charsPerSecond =
+                stopwatch.Elapsed.TotalSeconds > 0
+                    ? inputCharCount / stopwatch.Elapsed.TotalSeconds
+                    : 0;
+
+            _status =
+                $"Config: {_cc.GetConfig()}\n" +
+                $"Punctuation: {(_punctuation ? "enabled" : "disabled")}\n" +
+                $"Characters processed: {inputCharCount:N0}\n" +
+                $"Output characters: {outputCharCount:N0}\n" +
+                $"Conversion time: {stopwatch.Elapsed.TotalMilliseconds:F2} ms\n" +
+                $"Throughput: {charsPerSecond / 1_000_000.0:F2}M chars/sec\n" +
+                $"Output language detected: {language}";
+
+            // Paint the small status area before transferring and repainting
+            // the potentially large output document.
+            StateHasChanged();
+            await Js.InvokeVoidAsync("openccDemo.nextFrame");
+
+            await Js.InvokeVoidAsync(
+                "openccDemo.setOutputText",
+                converted);
+        }
+        catch (Exception ex)
+        {
+            _status = $"Conversion failed: {ex.Message}";
+        }
+    }
+
+    private async Task OpenTextFileAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        try
+        {
+            _openedTextFileName = file.Name;
+            _openedTextFileBytes = await ReadAllBytesAsync(file);
+
+            await RefreshOpenedTextFileAsync();
+        }
+        catch (Exception ex)
+        {
+            ClearOpenedTextFile();
+            _status = $"Failed to open file: {ex.Message}";
+        }
+    }
+
+    private async Task OnEncodingChangedAsync(ChangeEventArgs e)
+    {
+        _textEncoding = e.Value?.ToString() ?? "utf-8";
+
+        if (_openedTextFileBytes is not null)
+            await RefreshOpenedTextFileAsync();
+    }
+
+    private async Task RefreshOpenedTextFileAsync()
+    {
+        if (_openedTextFileBytes is null || !_editorsReady)
+            return;
+
+        try
+        {
+            var encoding = ResolveEncoding(_textEncoding);
+            var text = encoding.GetString(_openedTextFileBytes);
+
+            await SetInputTextAsync(
+                text,
+                preserveOpenedFileBytes: true);
+
+            await Js.InvokeVoidAsync("openccDemo.focusInput");
+
+            _status =
+                $"Opened {_openedTextFileName} as {EncodingDisplayName(_textEncoding)} " +
+                $"({CountUnicodeScalars(text):N0} characters).";
+        }
+        catch (Exception ex)
+        {
+            _status =
+                $"Failed to decode file as {_textEncoding}: {ex.Message}";
+        }
+    }
+
+    private async Task SetInputTextAsync(
+        string text,
+        bool preserveOpenedFileBytes)
+    {
+        _preserveOpenedTextFile = preserveOpenedFileBytes;
+
+        try
+        {
+            await Js.InvokeVoidAsync(
+                "openccDemo.setInputText",
+                text);
+        }
+        finally
+        {
+            _preserveOpenedTextFile = false;
+        }
+
+        if (!preserveOpenedFileBytes)
+            ClearOpenedTextFile();
+    }
+
+    private async Task ConvertOfficeFileAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        ClearOfficeResult();
+
+        var format = GetFormat(file.Name);
+
+        if (!IsDemoDocumentFormat(format))
+        {
+            _status =
+                $"Unsupported document format: {(string.IsNullOrEmpty(format) ? "unknown" : format)}";
+            return;
+        }
+
+        try
+        {
+            _status =
+                $"Converting {file.Name} ({_cc.GetConfig()})...";
+
+            StateHasChanged();
+            await Js.InvokeVoidAsync("openccDemo.nextFrame");
+
+            var inputBytes = await ReadAllBytesAsync(file);
+
+            var stopwatch = Stopwatch.StartNew();
+
+            byte[] outputBytes;
+
+            if (format == "txt")
+            {
+                var text =
+                    ResolveEncoding(_textEncoding).GetString(inputBytes);
+
+                var converted =
+                    _cc.Convert(text, _punctuation);
+
+                outputBytes =
+                    Encoding.UTF8.GetBytes(converted);
+            }
+            else
+            {
+                outputBytes =
+                    OfficeDocConverter.ConvertOfficeBytes(
+                        inputBytes,
+                        format,
+                        _cc,
+                        punctuation: _punctuation,
+                        keepFont: true);
+            }
+
+            stopwatch.Stop();
+
+            _officeOutputBytes = outputBytes;
+            _officeOutputName = ConvertedFileName(file.Name);
+            _officeOutputMime = GetMimeType(format);
+
+            _status =
+                $"Document conversion completed.\n" +
+                $"Config: {_cc.GetConfig()}\n" +
+                $"Punctuation: {(_punctuation ? "enabled" : "disabled")}\n" +
+                $"Input: {file.Name}\n" +
+                $"Output: {_officeOutputName}\n" +
+                $"Conversion time: {stopwatch.Elapsed.TotalMilliseconds:F2} ms\n" +
+                $"Click Download converted file when ready.";
+        }
+        catch (Exception ex)
+        {
+            _status =
+                $"Document conversion failed: {ex.Message}";
+        }
+    }
+
+    private async Task DownloadOfficeAsync()
+    {
+        if (_officeOutputBytes is null ||
+            string.IsNullOrEmpty(_officeOutputName))
+        {
+            return;
+        }
+
+        await Js.InvokeVoidAsync(
+            "openccDemo.downloadBytes",
+            _officeOutputName,
+            _officeOutputMime,
+            _officeOutputBytes);
+    }
+
+    private void ClearOfficeResult()
+    {
+        _officeOutputBytes = null;
+        _officeOutputName = "";
+        _officeOutputMime = "application/octet-stream";
+    }
+
+    private void ClearOpenedTextFile()
+    {
+        _openedTextFileName = "";
+        _openedTextFileBytes = null;
+    }
+
+    private static async Task<byte[]> ReadAllBytesAsync(
+        IBrowserFile file)
+    {
+        await using var stream =
+            file.OpenReadStream(MaxFileBytes);
+
+        using var memory = new MemoryStream(
+            file.Size <= int.MaxValue
+                ? (int)file.Size
+                : 0);
+
+        await stream.CopyToAsync(memory);
+        return memory.ToArray();
+    }
+
+    private static Encoding ResolveEncoding(string name)
+    {
+        return name.ToLowerInvariant() switch
+        {
+            "utf-8" => new UTF8Encoding(false),
+            "utf-16le" => new UnicodeEncoding(false, false),
+            "utf-16be" => new UnicodeEncoding(true, false),
+            "gb18030" => Encoding.GetEncoding("GB18030"),
+            "big5" => Encoding.GetEncoding("Big5"),
+            "shift_jis" => Encoding.GetEncoding("shift_jis"),
+            _ => throw new ArgumentException(
+                $"Unsupported encoding: {name}")
+        };
+    }
+
+    private static string EncodingDisplayName(string name)
+    {
+        return name.ToLowerInvariant() switch
+        {
+            "utf-8" => "UTF-8",
+            "utf-16le" => "UTF-16 LE",
+            "utf-16be" => "UTF-16 BE",
+            "gb18030" => "GB18030 / GBK",
+            "big5" => "Big5",
+            "shift_jis" => "Shift-JIS",
+            _ => name
+        };
+    }
+
+    private static int CountUnicodeScalars(string text)
+    {
+        var count = 0;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (char.IsHighSurrogate(text[i]) &&
+                i + 1 < text.Length &&
+                char.IsLowSurrogate(text[i + 1]))
+            {
+                i++;
+            }
+
+            count++;
+        }
+
+        return count;
+    }
+
+    private static string GetFormat(string fileName)
+    {
+        var extension = Path.GetExtension(fileName);
+
+        return string.IsNullOrEmpty(extension)
+            ? ""
+            : extension.TrimStart('.').ToLowerInvariant();
+    }
+
+    private static bool IsDemoDocumentFormat(string format)
+    {
+        return format is "docx" or "xlsx" or "pptx" or "epub" or "txt";
+    }
+
+    private static string ConvertedFileName(string fileName)
+    {
+        var extension = Path.GetExtension(fileName);
+        var baseName = Path.GetFileNameWithoutExtension(fileName);
+
+        return string.IsNullOrEmpty(extension)
+            ? $"{fileName}_converted"
+            : $"{baseName}_converted{extension}";
+    }
+
+    private static string GetMimeType(string format)
+    {
+        return format switch
+        {
+            "docx" =>
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "xlsx" =>
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "pptx" =>
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "epub" => "application/epub+zip",
+            "txt" => "text/plain;charset=utf-8",
+            _ => "application/octet-stream"
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync(
+                "openccDemo.clearInputChangedCallback");
+        }
+        catch
+        {
+            // JS runtime may already be unavailable during shutdown.
+        }
+
+        _selfReference?.Dispose();
+    }
+}
