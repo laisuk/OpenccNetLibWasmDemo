@@ -76,7 +76,7 @@
     <button @onclick="ConvertTextAsync">Convert</button>
 </div>
 
-<div class="office-drop">
+<div id="office-drop" class="office-drop">
     @if (!string.IsNullOrEmpty(_officeInputName))
     {
         <strong>@_officeInputName</strong>
@@ -87,15 +87,15 @@
     }
 
     <small>
-        DOCX, XLSX, PPTX, EPUB, TXT — converted locally in your browser; nothing is uploaded
+        DOCX, XLSX, PPTX, EPUB, TXT, MD — converted locally in your browser; nothing is uploaded
     </small>
     <small>
-        TXT uses the selected encoding; Office documents and EPUB handle text encoding internally.
+        TXT/MD uses the selected encoding; Office documents and EPUB handle text encoding internally.
     </small>
 
-    <InputFile class="office-file-input"
+    <InputFile id="office-file-input" class="office-file-input"
                OnChange="ConvertOfficeFileAsync"
-               accept=".docx,.xlsx,.pptx,.epub,.txt"/>
+               accept=".docx,.xlsx,.pptx,.epub,.txt,.md"/>
 </div>
 
 @if (_officeDownloadReady && !string.IsNullOrEmpty(_officeOutputName))
@@ -222,11 +222,15 @@
             _officeInputName = saved.InputName;
             _officeOutputName = saved.OutputName;
             _officeOutputMime = saved.ContentType;
-            // _status = saved.ResultText;
             _officeDownloadReady = true;
 
             StateHasChanged();
         }
+        
+        await Js.InvokeVoidAsync(
+            "openccDemo.initializeOfficeDrop",
+            "office-drop",
+            "office-file-input");
     }
 
     [JSInvokable]
@@ -492,7 +496,7 @@
 
             byte[] outputBytes;
 
-            if (format == "txt")
+            if (format is "txt" or "md")
             {
                 var text =
                     ResolveEncoding(_textEncoding).GetString(inputBytes);
@@ -646,7 +650,7 @@
 
     private static bool IsDemoDocumentFormat(string format)
     {
-        return format is "docx" or "xlsx" or "pptx" or "epub" or "txt";
+        return format is "docx" or "xlsx" or "pptx" or "epub" or "txt" or "md";
     }
 
     private static string ConvertedFileName(string fileName)

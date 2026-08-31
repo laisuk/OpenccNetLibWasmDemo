@@ -199,7 +199,7 @@ window.openccDemo = (() => {
         clearPreservedEditorText: function () {
             preservedInputText = null;
             preservedOutputText = null;
-        },        
+        },
 
         focusInput: function () {
             requireEditor(editorLeft, "Input editor").focus();
@@ -261,7 +261,7 @@ window.openccDemo = (() => {
 
             preservedDownloadBlob = new Blob(
                 [bytes],
-                { type: preservedDownloadContentType });
+                {type: preservedDownloadContentType});
 
             preservedDownloadUrl =
                 URL.createObjectURL(preservedDownloadBlob);
@@ -306,6 +306,36 @@ window.openccDemo = (() => {
                 URL.revokeObjectURL(preservedDownloadUrl);
                 preservedDownloadUrl = null;
             }
+        },
+
+        initializeOfficeDrop: function (dropId, inputId) {
+            const drop = document.getElementById(dropId);
+            const input = document.getElementById(inputId);
+
+            if (!drop || !input) {
+                return;
+            }
+
+            drop.addEventListener("dragover", e => {
+                e.preventDefault();
+            });
+
+            drop.addEventListener("drop", e => {
+                e.preventDefault();
+
+                const file = e.dataTransfer?.files?.[0];
+
+                if (!file) {
+                    return;
+                }
+
+                const transfer = new DataTransfer();
+                transfer.items.add(file);
+
+                input.files = transfer.files;
+                input.dispatchEvent(
+                    new Event("change", {bubbles: true}));
+            });
         },
     };
 })();
