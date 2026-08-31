@@ -1,8 +1,17 @@
 window.openccDemo = (() => {
     let editorLeft = null;
     let editorRight = null;
+    let preservedInputText = null;
+    let preservedOutputText = null;
     let openedTextChangedCallback = null;
     let addToHistoryAnnotation = null;
+
+    let preservedOfficeInputName = "";
+    let preservedDownloadBlob = null;
+    let preservedDownloadUrl = null;
+    let preservedDownloadName = "";
+    let preservedDownloadContentType = "";
+
 
     async function ensureCodeMirror() {
         const [
@@ -28,8 +37,22 @@ window.openccDemo = (() => {
     }
 
     async function initializeEditors(leftId, rightId, initialText) {
-        if (editorLeft && editorRight) {
+        if (editorLeft && editorRight &&
+            editorLeft.dom.isConnected &&
+            editorRight.dom.isConnected) {
             return;
+        }
+
+        if (editorLeft) {
+            preservedInputText = editorLeft.state.doc.toString();
+            editorLeft.destroy();
+            editorLeft = null;
+        }
+
+        if (editorRight) {
+            preservedOutputText = editorRight.state.doc.toString();
+            editorRight.destroy();
+            editorRight = null;
         }
 
         const {
@@ -86,7 +109,7 @@ window.openccDemo = (() => {
 
         editorLeft = createEditor(
             leftHost,
-            initialText ?? "",
+            preservedInputText ?? initialText ?? "",
             false,
             () => {
                 if (openedTextChangedCallback) {
@@ -96,7 +119,7 @@ window.openccDemo = (() => {
 
         editorRight = createEditor(
             rightHost,
-            "",
+            preservedOutputText ?? "",
             true
         );
 
@@ -173,6 +196,11 @@ window.openccDemo = (() => {
                 false);
         },
 
+        clearPreservedEditorText: function () {
+            preservedInputText = null;
+            preservedOutputText = null;
+        },        
+
         focusInput: function () {
             requireEditor(editorLeft, "Input editor").focus();
         },
@@ -198,7 +226,7 @@ window.openccDemo = (() => {
         downloadBytes: function (fileName, contentType, bytes) {
             const blob = new Blob(
                 [bytes],
-                { type: contentType || "application/octet-stream" });
+                {type: contentType || "application/octet-stream"});
 
             const url = URL.createObjectURL(blob);
 
@@ -214,6 +242,70 @@ window.openccDemo = (() => {
             } finally {
                 setTimeout(() => URL.revokeObjectURL(url), 0);
             }
-        }
+        },
+
+        preserveOfficeResult: function (
+            inputName,
+            outputName,
+            contentType,
+            bytes) {
+
+            if (preservedDownloadUrl) {
+                URL.revokeObjectURL(preservedDownloadUrl);
+            }
+
+            preservedOfficeInputName = inputName || "";
+            preservedDownloadName = outputName || "converted";
+            preservedDownloadContentType =
+                contentType || "application/octet-stream";
+
+            preservedDownloadBlob = new Blob(
+                [bytes],
+                { type: preservedDownloadContentType });
+
+            preservedDownloadUrl =
+                URL.createObjectURL(preservedDownloadBlob);
+        },
+
+        getPreservedOfficeState: function () {
+            if (!preservedDownloadBlob) {
+                return null;
+            }
+
+            return {
+                inputName: preservedOfficeInputName,
+                outputName: preservedDownloadName,
+                contentType: preservedDownloadContentType,
+            };
+        },
+
+        downloadPreservedOfficeResult: function () {
+            if (!preservedDownloadUrl || !preservedDownloadBlob) {
+                return false;
+            }
+
+            const anchor = document.createElement("a");
+            anchor.href = preservedDownloadUrl;
+            anchor.download = preservedDownloadName || "converted";
+            anchor.style.display = "none";
+
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+
+            return true;
+        },
+
+        clearPreservedOfficeState: function () {
+            preservedOfficeInputName = "";
+            preservedDownloadBlob = null;
+            preservedDownloadName = "";
+            preservedDownloadContentType = "";
+
+            if (preservedDownloadUrl) {
+                URL.revokeObjectURL(preservedDownloadUrl);
+                preservedDownloadUrl = null;
+            }
+        },
     };
 })();

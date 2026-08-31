@@ -48,7 +48,7 @@
 
 <div class="row">
     <label>
-        <input type="checkbox" @bind="_punctuation" />
+        <input type="checkbox" @bind="_punctuation"/>
         Enable punctuation conversion
     </label>
 </div>
@@ -58,7 +58,7 @@
         Open File
         <InputFile class="hidden-file-input"
                    OnChange="OpenTextFileAsync"
-                   accept=".txt,.md" />
+                   accept=".txt,.md"/>
     </label>
 
     <label for="textEncoding">Encoding:</label>
@@ -77,16 +77,28 @@
 </div>
 
 <div class="office-drop">
-    <strong>Click to open or drop a document, EPUB or text file here</strong>
-    <small>DOCX, XLSX, PPTX, EPUB, TXT — converted locally in your browser; nothing is uploaded</small>
-    <small>TXT uses the selected encoding; Office documents and EPUB handle text encoding internally.</small>
+    @if (!string.IsNullOrEmpty(_officeInputName))
+    {
+        <strong>@_officeInputName</strong>
+    }
+    else
+    {
+        <strong>Click to open or drop a document, EPUB or text file here</strong>
+    }
+
+    <small>
+        DOCX, XLSX, PPTX, EPUB, TXT — converted locally in your browser; nothing is uploaded
+    </small>
+    <small>
+        TXT uses the selected encoding; Office documents and EPUB handle text encoding internally.
+    </small>
 
     <InputFile class="office-file-input"
                OnChange="ConvertOfficeFileAsync"
-               accept=".docx,.xlsx,.pptx,.epub,.txt" />
+               accept=".docx,.xlsx,.pptx,.epub,.txt"/>
 </div>
 
-@if (_officeOutputBytes is not null && !string.IsNullOrEmpty(_officeOutputName))
+@if (_officeDownloadReady && !string.IsNullOrEmpty(_officeOutputName))
 {
     <div class="office-result">
         <span>Ready: @_officeOutputName </span>
@@ -101,7 +113,7 @@
     private const long MaxFileBytes = 512L * 1024 * 1024;
 
     private readonly string[] _configs =
-        Opencc.GetSupportedConfigs().ToArray();
+        [.. Opencc.GetSupportedConfigs()];
 
     private readonly Dictionary<string, string> _configDescriptions =
         new(StringComparer.OrdinalIgnoreCase)
@@ -142,13 +154,24 @@
     private bool _preserveOpenedTextFile;
 
     private byte[]? _officeOutputBytes;
+    private string _officeInputName = "";
     private string _officeOutputName = "";
     private string _officeOutputMime = "application/octet-stream";
+    private bool _officeDownloadReady;
 
     private string ConfigDescription =>
         _configDescriptions.TryGetValue(_config, out var description)
             ? description
             : "";
+
+    private sealed class PreservedOfficeState
+    {
+        public string InputName { get; set; } = "";
+        public string OutputName { get; set; } = "";
+
+        public string ContentType { get; set; } = "";
+        // public string ResultText { get; set; } = "";
+    }
 
     protected override void OnInitialized()
     {
@@ -190,6 +213,20 @@
             nameof(OnCodeMirrorInputChanged));
 
         _editorsReady = true;
+
+        var saved = await Js.InvokeAsync<PreservedOfficeState?>(
+            "openccDemo.getPreservedOfficeState");
+
+        if (saved is not null)
+        {
+            _officeInputName = saved.InputName;
+            _officeOutputName = saved.OutputName;
+            _officeOutputMime = saved.ContentType;
+            // _status = saved.ResultText;
+            _officeDownloadReady = true;
+
+            StateHasChanged();
+        }
     }
 
     [JSInvokable]
@@ -338,8 +375,6 @@
                 $"Throughput: {charsPerSecond / 1_000_000.0:F2}M chars/sec\n" +
                 $"Output language detected: {language}";
 
-            // Paint the small status area before transferring and repainting
-            // the potentially large output document.
             StateHasChanged();
             await Js.InvokeVoidAsync("openccDemo.nextFrame");
 
@@ -431,6 +466,8 @@
     {
         var file = e.File;
         ClearOfficeResult();
+        
+        _officeInputName = file.Name;
 
         var format = GetFormat(file.Name);
 
@@ -491,6 +528,15 @@
                 $"Output: {_officeOutputName}\n" +
                 $"Conversion time: {stopwatch.Elapsed.TotalMilliseconds:F2} ms\n" +
                 $"Click Download converted file when ready.";
+
+            await Js.InvokeVoidAsync(
+                "openccDemo.preserveOfficeResult",
+                file.Name,
+                _officeOutputName,
+                _officeOutputMime,
+                _officeOutputBytes);
+
+            _officeDownloadReady = true;
         }
         catch (Exception ex)
         {
@@ -501,24 +547,23 @@
 
     private async Task DownloadOfficeAsync()
     {
-        if (_officeOutputBytes is null ||
+        if (!_officeDownloadReady ||
             string.IsNullOrEmpty(_officeOutputName))
         {
             return;
         }
 
         await Js.InvokeVoidAsync(
-            "openccDemo.downloadBytes",
-            _officeOutputName,
-            _officeOutputMime,
-            _officeOutputBytes);
+            "openccDemo.downloadPreservedOfficeResult");
     }
 
     private void ClearOfficeResult()
     {
+        _officeInputName = "";
         _officeOutputBytes = null;
         _officeOutputName = "";
         _officeOutputMime = "application/octet-stream";
+        _officeDownloadReady = false;
     }
 
     private void ClearOpenedTextFile()
@@ -644,4 +689,5 @@
 
         _selfReference?.Dispose();
     }
+
 }
