@@ -24,6 +24,9 @@
             <HintPath>lib/OpenccNetLib.dll</HintPath>
             <Private>true</Private>
         </Reference>
+        <Reference Include="ZstdSharp">
+          <HintPath>lib\ZstdSharp.dll</HintPath>
+        </Reference>
     </ItemGroup>
 
 </Project>
