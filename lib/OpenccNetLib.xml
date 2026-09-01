@@ -6,7 +6,7 @@
     <members>
         <member name="M:OpenccNetLib.EmbeddedData.ReadText(System.String)">
             <summary>
-            Loads the canonical built-in Embedded Data from this assembly's embedded resource.
+            Loads the specified built-in text data from this assembly's embedded resources.
             </summary>
         </member>
         <member name="T:OpenccNetLib.CompatIdeographs">
@@ -37,8 +37,8 @@
             Returns the cached built-in compatibility ideograph normalizer.
             </summary>
             <remarks>
-            The bundled mapping data is loaded from
-            <c>dicts/CJK_Compatibility_Ideographs.txt</c> and parsed at most once
+            The bundled mapping data is loaded from the assembly's embedded
+            <c>CJK_Compatibility_Ideographs.txt</c> resource and parsed at most once
             per process. Subsequent calls reuse the same dense lookup tables.
             </remarks>
             <returns>The reusable built-in compatibility normalizer.</returns>
@@ -785,8 +785,9 @@
             <remarks>
             <para>
             This method uses cached built-in fallback mappings loaded from
-            <c>dicts/CharactersTofu.txt</c>. To add or override mappings, build a reusable
-            <see cref="T:OpenccNetLib.DeTofuMap"/> with <see cref="M:OpenccNetLib.DeTofuMap.Builtin(OpenccNetLib.DeTofuLevel)"/>.
+            the assembly's embedded <c>CharactersTofu.txt</c> resource. To add or
+            override mappings, build a reusable <see cref="T:OpenccNetLib.DeTofuMap"/> with
+            <see cref="M:OpenccNetLib.DeTofuMap.Builtin(OpenccNetLib.DeTofuLevel)"/>.
             </para>
             <para>
             The method is non-destructive: characters without a fallback mapping are preserved
@@ -898,7 +899,7 @@
             <para>
             <see cref="T:OpenccNetLib.DeTofuMap"/> is useful when callers want to build a fallback table once
             and reuse it across many strings, or layer application-specific fallback data on top
-            of the built-in mappings from <c>dicts/CharactersTofu.txt</c>.
+            of the built-in mappings from the embedded <c>CharactersTofu.txt</c> resource.
             </para>
             <para>
             Custom files and custom pairs are applied after the built-in mappings. Later mappings
@@ -916,8 +917,9 @@
             Builds a DeTofu map from the library's built-in compatibility data.
             </summary>
             <remarks>
-            Built-in mappings are loaded from <c>dicts/CharactersTofu.txt</c>. Only entries
-            at or above the specified threshold are included. For example,
+            Built-in mappings are loaded from the assembly's embedded
+            <c>CharactersTofu.txt</c> resource. Only entries at or above the specified
+            threshold are included. For example,
             <see cref="F:OpenccNetLib.DeTofuLevel.ExtB"/> includes mapped Extension B and later entries, while
             <see cref="F:OpenccNetLib.DeTofuLevel.ExtI"/> includes mapped Extension I entries only.
             </remarks>
@@ -993,6 +995,65 @@
             </summary>
             <param name="entries">The parsed mapping entries to apply in enumeration order.</param>
             <returns>The current map instance after eligible entries have been applied.</returns>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryJsonContext.DictionaryMaxlength">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryJsonContext.DictWithMaxLength">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryJsonContext.DictionaryStringString">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryJsonContext.DictionaryStringUInt64">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryJsonContext.HashSetInt32">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryJsonContext.Int32">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryJsonContext.String">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryJsonContext.UInt64">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryJsonContext.Default">
+            <summary>
+            The default <see cref="T:System.Text.Json.Serialization.JsonSerializerContext"/> associated with a default <see cref="T:System.Text.Json.JsonSerializerOptions"/> instance.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryJsonContext.GeneratedSerializerOptions">
+            <summary>
+            The source-generated options associated with this context.
+            </summary>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryJsonContext.#ctor">
+            <inheritdoc/>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryJsonContext.#ctor(System.Text.Json.JsonSerializerOptions)">
+            <inheritdoc/>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryJsonContext.GetTypeInfo(System.Type)">
+            <inheritdoc/>
         </member>
         <member name="T:OpenccNetLib.DictWithMaxLength">
             <summary>
@@ -1452,6 +1513,12 @@
             <returns>
             The deserialized and normalized <see cref="T:OpenccNetLib.DictionaryMaxlength"/> instance.
             </returns>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.DeserializeJson(System.String)">
+            <summary>
+            Deserializes an in-memory JSON dictionary using source-generated metadata
+            and restores all derived lookup metadata.
+            </summary>
         </member>
         <member name="F:OpenccNetLib.DictionaryLib.SlotFiles">
              <summary>
@@ -4558,9 +4625,9 @@
             <remarks>
             <para>
             This optional preprocessing operation combines <see cref="M:OpenccNetLib.Opencc.NormalizeCompat(System.String)"/> and
-            <see cref="M:OpenccNetLib.Opencc.NormalizeUnicodeCompat(System.String)"/> coverage in one scalar-by-scalar pass. The built-in
-            compatibility-ideograph mapping has precedence when both tables contain a source. A replacement
-            is emitted directly and is not remapped again, preventing accidental chained normalization.
+            <see cref="M:OpenccNetLib.Opencc.NormalizeUnicodeCompat(System.String)"/> coverage in a single normalization pass.
+            The curated Unicode compatibility mapping is applied first, followed by the built-in
+            CJK Compatibility Ideograph mapping to the resulting scalar.
             </para>
             <para>
             This is not OpenCC linguistic conversion and is not general-purpose NFC, NFD, NFKC, or NFKD.
@@ -4624,7 +4691,7 @@
             <see cref="M:OpenccNetLib.DeTofuMap.Builtin(OpenccNetLib.DeTofuLevel)"/>,
             <see cref="M:OpenccNetLib.DeTofuMap.WithCustomFile(System.String)"/>, and
             <see cref="M:OpenccNetLib.DeTofuMap.Convert(System.String)"/>.
-            Built-in mappings are loaded from <c>dicts/CharactersTofu.txt</c>.
+            Built-in mappings are loaded from assembly’s embedded <c>CharactersTofu.txt</c>.
             </para>
             <para>
             Custom mappings are applied after the built-in table. If the same tofu-risk character exists
@@ -4669,7 +4736,7 @@
             <see cref="M:OpenccNetLib.DeTofuMap.Builtin(OpenccNetLib.DeTofuLevel)"/>,
             <see cref="M:OpenccNetLib.DeTofuMap.WithCustomPairs(System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{System.String,System.String}})"/>,
             and <see cref="M:OpenccNetLib.DeTofuMap.Convert(System.String)"/>.
-            Built-in mappings are loaded from <c>dicts/CharactersTofu.txt</c>.
+            Built-in mappings are loaded from assembly’s embedded <c>CharactersTofu.txt</c>.
             </para>
             <para>
             Custom mappings are applied after the built-in table. If the same tofu-risk character exists
@@ -4936,8 +5003,8 @@
             </summary>
             <remarks>
             <para>
-            This internal normalizer loads the curated mappings from
-            <c>dicts/Unicode_Compatibility.txt</c>. The table contains selected
+            This internal normalizer loads the curated mappings from the assembly's
+            embedded <c>Unicode_Compatibility.txt</c> resource. The table contains selected
             Unicode radicals, glyph variants, punctuation forms, and known text-extraction
             artifacts that are useful when normalizing CJK text.
             </para>
