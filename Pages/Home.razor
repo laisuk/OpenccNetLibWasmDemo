@@ -42,6 +42,7 @@
             <button @onclick="CopyAsync">Copy</button>
             <button @onclick="DeTofuAsync">DeTofu</button>
             <button @onclick="ClearOutputAsync">Clear</button>
+            <button @onclick="DownloadOutputAsync">Download</button>
         </div>
         <div id="editor-right" class="editor-box"></div>
     </div>
@@ -437,6 +438,29 @@
         {
             _status = $"Conversion failed: {ex.Message}";
         }
+    }
+
+    private async Task DownloadOutputAsync()
+    {
+        if (!_editorsReady)
+            return;
+
+        var text =
+            await Js.InvokeAsync<string>("openccDemo.getOutputText");
+
+        if (string.IsNullOrEmpty(text))
+        {
+            _status = "Download: output is empty.";
+            return;
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(text);
+
+        await Js.InvokeVoidAsync(
+            "openccDemo.downloadBytes",
+            "opencc_output.txt",
+            "text/plain;charset=utf-8",
+            bytes);
     }
 
     private async Task OpenTextFileAsync(InputFileChangeEventArgs e)
