@@ -40,6 +40,7 @@
         <h3>Output</h3>
         <div class="toolbar">
             <button @onclick="CopyAsync">Copy</button>
+            <button @onclick="DeTofuAsync">DeTofu</button>
             <button @onclick="ClearOutputAsync">Clear</button>
         </div>
         <div id="editor-right" class="editor-box"></div>
@@ -226,7 +227,7 @@
 
             StateHasChanged();
         }
-        
+
         await Js.InvokeVoidAsync(
             "openccDemo.initializeOfficeDrop",
             "office-drop",
@@ -301,6 +302,12 @@
             var text =
                 await Js.InvokeAsync<string>("openccDemo.getInputText");
 
+            if (string.IsNullOrEmpty(text))
+            {
+                _status = "Normalize: input text is empty.";
+                return;
+            }
+
             var normalized =
                 _cc.NormalizeCompatExtended(text);
 
@@ -316,6 +323,40 @@
         catch (Exception ex)
         {
             _status = $"Normalization failed: {ex.Message}";
+        }
+    }
+
+    private async Task DeTofuAsync()
+    {
+        if (!_editorsReady)
+            return;
+
+        try
+        {
+            var text =
+                await Js.InvokeAsync<string>("openccDemo.getOutputText");
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                _status = "DeTofu: output is empty.";
+                return;
+            }
+
+            var deTofued =
+                _cc.DeTofu(text, DeTofuLevel.ExtB);
+
+            await Js.InvokeVoidAsync(
+                "openccDemo.setOutputText",
+                deTofued);
+
+            await Js.InvokeVoidAsync("openccDemo.focusOutput");
+
+            _status =
+                "Output normalized with DeTofu.";
+        }
+        catch (Exception ex)
+        {
+            _status = $"DoTofu failed: {ex.Message}";
         }
     }
 
@@ -350,6 +391,12 @@
         {
             var input =
                 await Js.InvokeAsync<string>("openccDemo.getInputText");
+
+            if (string.IsNullOrEmpty(input))
+            {
+                _status = "Convert: input text is empty.";
+                return;
+            }
 
             var stopwatch = Stopwatch.StartNew();
             var converted = _cc.Convert(input, _punctuation);
@@ -470,7 +517,7 @@
     {
         var file = e.File;
         ClearOfficeResult();
-        
+
         _officeInputName = file.Name;
 
         var format = GetFormat(file.Name);
