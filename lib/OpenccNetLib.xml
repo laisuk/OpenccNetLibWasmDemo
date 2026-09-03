@@ -1954,40 +1954,284 @@
             or incomplete.
             </summary>
         </member>
+        <member name="F:OpenccNetLib.DictionaryLib.CborDictionarySlotCount">
+            <summary>
+            Number of dictionary slots written to the top-level CBOR map.
+            </summary>
+            <remarks>
+            <para>
+            The CBOR schema intentionally mirrors the public snake_case properties on
+            <see cref="T:OpenccNetLib.DictionaryMaxlength"/>. Keeping this count explicit makes the
+            writer emit a definite-length map, which is compact and avoids buffering or
+            reflection-based object discovery.
+            </para>
+            <para>
+            When a new persistent dictionary slot is added to <see cref="T:OpenccNetLib.DictionaryMaxlength"/>,
+            update this value together with <see cref="M:OpenccNetLib.DictionaryLib.WriteDictionaryMaxlengthCbor(System.Formats.Cbor.CborWriter,OpenccNetLib.DictionaryMaxlength)"/> and
+            <see cref="M:OpenccNetLib.DictionaryLib.ReadDictionaryMaxlengthCbor(System.Formats.Cbor.CborReader)"/>.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:OpenccNetLib.DictionaryLib.CborSlotFieldCount">
+            <summary>
+            Number of fields persisted for each <see cref="T:OpenccNetLib.DictWithMaxLength"/> CBOR object.
+            </summary>
+            <remarks>
+            The six fields deliberately include the precomputed lookup metadata rather
+            than serializing only <see cref="P:OpenccNetLib.DictWithMaxLength.Dict"/>. In particular,
+            <see cref="P:OpenccNetLib.DictWithMaxLength.StarterLenMask"/> can be expensive to rebuild for
+            large phrase dictionaries because reconstruction requires scanning every key.
+            Persisting the metadata moves that work to dictionary-build time and keeps
+            normal application startup on the fast hydration path.
+            </remarks>
+        </member>
         <member name="M:OpenccNetLib.DictionaryLib.FromCbor(System.String)">
             <summary>
-            Loads <see cref="T:OpenccNetLib.DictionaryMaxlength"/> from a CBOR file and ensures
-            all derived dictionary metadata is present before returning the instance.
+            Loads a <see cref="T:OpenccNetLib.DictionaryMaxlength"/> instance from a CBOR file using
+            an explicit, reflection-free CBOR reader.
             </summary>
             <param name="relativePath">
             Relative path under <see cref="P:System.AppContext.BaseDirectory"/> or an absolute
-            path to the CBOR file.
-            Default: <c>dicts/dictionary_maxlength.cbor</c>.
+            path to the CBOR file. Defaults to
+            <c>dicts/dictionary_maxlength.cbor</c>.
             </param>
-            <returns>The hydrated <see cref="T:OpenccNetLib.DictionaryMaxlength"/> instance.</returns>
+            <returns>
+            A hydrated <see cref="T:OpenccNetLib.DictionaryMaxlength"/> whose persisted acceleration
+            metadata is reused when present and rebuilt only when missing or incomplete.
+            </returns>
+            <remarks>
+            <para>
+            This implementation intentionally does not use a CLR-object mapper. The CBOR
+            structure is decoded field-by-field with <see cref="T:System.Formats.Cbor.CborReader"/>, which keeps
+            the path deterministic and NativeAOT/trimming friendly.
+            </para>
+            <para>
+            The reader accepts the legacy camelCase field names emitted by
+            PeterO.Cbor (<c>dict</c>, <c>maxLength</c>, <c>minLength</c>,
+            <c>lengthMask</c>, <c>longLengths</c>, and <c>starterLenMask</c>) as
+            well as the corresponding PascalCase forms. Unknown fields are skipped
+            so newer dictionary packs can remain forward-compatible with older readers.
+            </para>
+            <para>
+            After decoding, <see cref="M:OpenccNetLib.DictionaryLib.EnsureDerivedMetadata(OpenccNetLib.DictionaryMaxlength)"/> remains the compatibility
+            safety net for older or externally generated payloads that omit one or more
+            derived fields. Normal generated CBOR dictionaries should already contain all
+            metadata and therefore avoid rebuilding it at runtime.
+            </para>
+            </remarks>
             <exception cref="T:System.ArgumentException">
-            Thrown when <paramref name="relativePath"/> is null or empty.
+            Thrown when <paramref name="relativePath"/> is null, empty, or whitespace.
             </exception>
-            <exception cref="T:System.IO.FileNotFoundException">If the CBOR file cannot be found.</exception>
-            <exception cref="T:System.IO.IOException">If the CBOR file cannot be read.</exception>
+            <exception cref="T:System.IO.FileNotFoundException">
+            Thrown when the CBOR dictionary file cannot be found.
+            </exception>
+            <exception cref="T:System.Formats.Cbor.CborContentException">
+            Thrown when the file contains malformed CBOR or an unexpected value type for
+            a known schema field.
+            </exception>
+            <exception cref="T:System.IO.InvalidDataException">
+            Thrown when the root CBOR value is not a map or trailing data remains after
+            the dictionary payload.
+            </exception>
+            <exception cref="T:System.IO.IOException">
+            Thrown when the file cannot be read.
+            </exception>
         </member>
         <member name="M:OpenccNetLib.DictionaryLib.SaveCbor(System.String,OpenccNetLib.DictionaryMaxlength)">
             <summary>
-            Serializes the dictionary to CBOR format and saves it to a file.
+            Serializes a <see cref="T:OpenccNetLib.DictionaryMaxlength"/> instance to CBOR and saves
+            the encoded bytes to a file.
             </summary>
-            <param name="path">The output file path.</param>
+            <param name="path">Destination CBOR file path.</param>
             <param name="dictionary">
-            Optional preloaded dictionary instance to serialize.
+            Optional preloaded dictionary instance. When <see langword="null"/>, the
+            dictionary is built from the default OpenCC text dictionary sources via
+            <see cref="M:OpenccNetLib.DictionaryLib.FromDicts(System.String,System.Collections.Generic.IDictionary{OpenccNetLib.DictSlot,System.String},System.Collections.Generic.IDictionary{OpenccNetLib.DictSlot,System.String})"/>.
             </param>
+            <remarks>
+            Serialization is performed explicitly with <see cref="T:System.Formats.Cbor.CborWriter"/>. The
+            persisted schema includes all derived lookup metadata so applications can
+            hydrate the hot-path structures directly without rescanning dictionary keys.
+            </remarks>
         </member>
         <member name="M:OpenccNetLib.DictionaryLib.ToCborBytes(OpenccNetLib.DictionaryMaxlength)">
             <summary>
-            Serializes the dictionary to CBOR format and returns the bytes.
+            Serializes a <see cref="T:OpenccNetLib.DictionaryMaxlength"/> instance to CBOR and returns
+            the encoded bytes.
             </summary>
             <param name="dictionary">
-            Optional preloaded dictionary instance to serialize.
+            Optional preloaded dictionary instance. When <see langword="null"/>, the
+            dictionary is built from the default OpenCC text dictionary sources via
+            <see cref="M:OpenccNetLib.DictionaryLib.FromDicts(System.String,System.Collections.Generic.IDictionary{OpenccNetLib.DictSlot,System.String},System.Collections.Generic.IDictionary{OpenccNetLib.DictSlot,System.String})"/>.
             </param>
-            <returns>CBOR-encoded byte array.</returns>
+            <returns>
+            A CBOR payload containing all OpenCC dictionary slots and their precomputed
+            length/starter metadata.
+            </returns>
+            <remarks>
+            <para>
+            The writer uses definite-length maps and arrays whenever their sizes are
+            known. No reflection, runtime property enumeration, or generic POCO mapping
+            is involved.
+            </para>
+            <para>
+            Field names intentionally match the historical CBOR object schema so that
+            existing dictionary packs remain readable by the new implementation and the
+            serialized contract stays aligned with the JSON representation.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.DeserializeCbor(System.Byte[])">
+            <summary>
+            Deserializes a CBOR payload into <see cref="T:OpenccNetLib.DictionaryMaxlength"/> and
+            restores any missing derived metadata.
+            </summary>
+            <param name="data">Complete CBOR dictionary payload.</param>
+            <returns>A hydrated and metadata-ready dictionary instance.</returns>
+            <remarks>
+            <para>
+            Lax conformance mode is used deliberately for compatibility with existing
+            PeterO.Cbor-generated dictionary files and externally generated CBOR that is
+            structurally valid but not necessarily canonical. The explicit schema reader
+            still validates the expected major types for known fields.
+            </para>
+            <para>
+            Unknown top-level slots and unknown per-slot fields are skipped. This makes
+            the decoder tolerant of additive schema evolution while preserving strict
+            handling of known data.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.WriteDictionaryMaxlengthCbor(System.Formats.Cbor.CborWriter,OpenccNetLib.DictionaryMaxlength)">
+            <summary>
+            Writes the complete <see cref="T:OpenccNetLib.DictionaryMaxlength"/> object as a CBOR map.
+            </summary>
+            <param name="writer">Target CBOR writer.</param>
+            <param name="dictionary">Dictionary container to encode.</param>
+            <remarks>
+            The top-level names are a persistent wire contract and intentionally match
+            the snake_case property names exposed by <see cref="T:OpenccNetLib.DictionaryMaxlength"/>.
+            They are written explicitly rather than derived from reflection or enum names
+            so a future source-code rename cannot silently change the serialized format.
+            </remarks>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.ReadDictionaryMaxlengthCbor(System.Formats.Cbor.CborReader)">
+            <summary>
+            Reads the top-level CBOR dictionary map into a new
+            <see cref="T:OpenccNetLib.DictionaryMaxlength"/> instance.
+            </summary>
+            <param name="reader">Reader positioned at the start of the root map.</param>
+            <returns>The decoded dictionary container.</returns>
+            <remarks>
+            Unknown slot names are skipped rather than rejected. Known slot names are
+            assigned explicitly, preserving the serialized schema independently of CLR
+            metadata or property ordering.
+            </remarks>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.WriteCborSlot(System.Formats.Cbor.CborWriter,System.String,OpenccNetLib.DictWithMaxLength)">
+            <summary>
+            Writes one <see cref="T:OpenccNetLib.DictWithMaxLength"/> slot to the parent CBOR map.
+            </summary>
+            <param name="writer">Target CBOR writer.</param>
+            <param name="slotName">Persistent snake_case slot name.</param>
+            <param name="slot">Dictionary slot to encode.</param>
+            <remarks>
+            Each slot persists both the source mapping and all acceleration metadata
+            using the historical PeterO.Cbor camelCase wire names:
+            <c>dict</c>, <c>maxLength</c>, <c>minLength</c>, <c>lengthMask</c>,
+            <c>longLengths</c>, and <c>starterLenMask</c>. This preserves legacy
+            dictionary-pack compatibility while avoiding expensive key scans during
+            normal hydration.
+            </remarks>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.ReadCborSlot(System.Formats.Cbor.CborReader)">
+            <summary>
+            Reads one <see cref="T:OpenccNetLib.DictWithMaxLength"/> object from CBOR.
+            </summary>
+            <param name="reader">Reader positioned at the slot value.</param>
+            <returns>A decoded dictionary slot.</returns>
+            <remarks>
+            Missing fields retain their normal CLR defaults and are repaired later by
+            <see cref="M:OpenccNetLib.DictionaryLib.EnsureDerivedMetadata(OpenccNetLib.DictionaryMaxlength)"/>. Unknown additive fields are skipped,
+            allowing newer dictionary builders to extend the slot schema without making
+            older readers unusable.
+            </remarks>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.WriteStringDictionary(System.Formats.Cbor.CborWriter,System.Collections.Generic.Dictionary{System.String,System.String})">
+            <summary>
+            Writes a string-to-string dictionary as a definite-length CBOR map.
+            </summary>
+            <param name="writer">Target CBOR writer.</param>
+            <param name="dictionary">Dictionary to encode; null is encoded as an empty map.</param>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.ReadStringDictionary(System.Formats.Cbor.CborReader)">
+            <summary>
+            Reads a CBOR map containing string keys and string values.
+            </summary>
+            <param name="reader">Reader positioned at the map or a CBOR null.</param>
+            <returns>
+            A new dictionary using <see cref="P:System.StringComparer.Ordinal"/>. Duplicate map
+            keys, when accepted by lax CBOR conformance, use last-value-wins semantics.
+            </returns>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.WriteLongLengths(System.Formats.Cbor.CborWriter,System.Collections.Generic.HashSet{System.Int32})">
+            <summary>
+            Writes the set of key lengths greater than 64 UTF-16 code units.
+            </summary>
+            <param name="writer">Target CBOR writer.</param>
+            <param name="longLengths">
+            Optional long-length set. A null value is encoded as CBOR null to preserve
+            the historical object schema and avoid allocating an empty collection.
+            </param>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.ReadLongLengths(System.Formats.Cbor.CborReader)">
+            <summary>
+            Reads the optional set of key lengths greater than 64 UTF-16 code units.
+            </summary>
+            <param name="reader">Reader positioned at a CBOR array or null.</param>
+            <returns>The decoded set, or <see langword="null"/> when encoded as null.</returns>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.WriteStarterLenMask(System.Formats.Cbor.CborWriter,System.Collections.Generic.Dictionary{System.String,System.UInt64})">
+            <summary>
+            Writes the precomputed starter-to-length-mask index used by the conversion
+            hot path.
+            </summary>
+            <param name="writer">Target CBOR writer.</param>
+            <param name="starterLenMask">
+            Optional starter index. A null value is encoded as CBOR null so empty slots
+            remain allocation-free until metadata is actually required.
+            </param>
+            <remarks>
+            Persisting this map is intentional even though it can be rebuilt from
+            <see cref="P:OpenccNetLib.DictWithMaxLength.Dict"/>. Rebuilding requires a complete scan of
+            the slot's keys and starter extraction, which is undesirable on every normal
+            application startup for large phrase dictionaries.
+            </remarks>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.ReadStarterLenMask(System.Formats.Cbor.CborReader)">
+            <summary>
+            Reads the precomputed starter-to-length-mask index from CBOR.
+            </summary>
+            <param name="reader">Reader positioned at a CBOR map or null.</param>
+            <returns>
+            A dictionary using <see cref="P:System.StringComparer.Ordinal"/>, or
+            <see langword="null"/> when the field was encoded as null.
+            </returns>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.ReadNullableInt32(System.Formats.Cbor.CborReader)">
+            <summary>
+            Reads an optional integer field used by historical or externally generated
+            CBOR dictionary payloads.
+            </summary>
+            <param name="reader">Reader positioned at an integer or null.</param>
+            <returns>The decoded value, or zero when the CBOR value is null.</returns>
+        </member>
+        <member name="M:OpenccNetLib.DictionaryLib.ReadNullableUInt64(System.Formats.Cbor.CborReader)">
+            <summary>
+            Reads an optional unsigned 64-bit metadata field.
+            </summary>
+            <param name="reader">Reader positioned at an unsigned integer or null.</param>
+            <returns>The decoded value, or zero when the CBOR value is null.</returns>
         </member>
         <member name="M:OpenccNetLib.DictionaryLib.SaveJsonCompressed(System.String,OpenccNetLib.DictionaryMaxlength)">
             <summary>
