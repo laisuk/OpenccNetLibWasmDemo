@@ -1151,7 +1151,8 @@
             <para>
             Most consumers do not need to construct this type manually. Use
             <see cref="P:OpenccNetLib.DictionaryLib.Provider"/> for the built-in dictionary,
-            <see cref="M:OpenccNetLib.DictionaryLib.FromDicts(System.String,System.Collections.Generic.IDictionary{OpenccNetLib.DictSlot,System.String},System.Collections.Generic.IDictionary{OpenccNetLib.DictSlot,System.String})"/> or
+            <see cref="M:OpenccNetLib.DictionaryLib.FromZstd(System.String)"/>,
+            <see cref="M:OpenccNetLib.DictionaryLib.FromDicts(System.String,System.Collections.Generic.IDictionary{OpenccNetLib.DictSlot,System.String},System.Collections.Generic.IDictionary{OpenccNetLib.DictSlot,System.String})"/>, or
             <see cref="M:OpenccNetLib.DictionaryLib.FromJson(System.String)"/> to load dictionary data, and
             <see cref="M:OpenccNetLib.Opencc.UseCustomDictionary(OpenccNetLib.DictionaryMaxlength)"/> to activate a
             custom dictionary set.
@@ -1350,7 +1351,6 @@
             <para>
             Unlike <see cref="M:OpenccNetLib.DictionaryLib.New"/>, this method does not change the active
             global dictionary provider or clear cached conversion plans.
-            Use <see cref="M:OpenccNetLib.DictionaryLib.FromZstdBytes(System.Byte[])"/> to load compressed data already in memory.
             </para>
             </remarks>
             <exception cref="T:System.ArgumentNullException">
@@ -1363,34 +1363,26 @@
             Thrown when the Zstandard dictionary file does not exist.
             </exception>
         </member>
-        <member name="M:OpenccNetLib.DictionaryLib.FromZstdBytes(System.Byte[])">
+        <member name="M:OpenccNetLib.DictionaryLib.DeserializeZstd(System.IO.Stream)">
             <summary>
-            Loads an independent dictionary from caller-provided Zstandard-compressed JSON data.
+            Decompresses, deserializes, and normalizes a Zstandard-compressed
+            <see cref="T:OpenccNetLib.DictionaryMaxlength"/> JSON stream.
             </summary>
-            <param name="data">
-            Zstandard-compressed JSON dictionary data.
+            <param name="compressedStream">
+            Stream containing the Zstandard-compressed dictionary payload.
             </param>
             <returns>
-            A new, independent, deserialized and normalized
+            A new, independent, deserialized and metadata-ready
             <see cref="T:OpenccNetLib.DictionaryMaxlength"/> instance.
             </returns>
             <remarks>
-            This in-memory loader is separate from <see cref="P:OpenccNetLib.DictionaryLib.Provider"/>, which loads the
-            built-in dictionary from an embedded assembly resource.
-            <para>
-            Unlike <see cref="M:OpenccNetLib.DictionaryLib.New"/>, this method does not change the active
-            global dictionary provider or clear cached conversion plans.
-            Use <see cref="M:OpenccNetLib.DictionaryLib.FromZstd(System.String)"/> to load from a file path.
-            </para>
+            This is the shared internal deserialization path used by the embedded
+            built-in dictionary loader, external Zstd file loading, and tests.
+            It does not change the active global dictionary provider or conversion-plan cache.
             </remarks>
             <exception cref="T:System.ArgumentNullException">
-            Thrown when <paramref name="data"/> is <see langword="null"/>.
+            <paramref name="compressedStream"/> is <see langword="null"/>.
             </exception>
-        </member>
-        <member name="M:OpenccNetLib.DictionaryLib.DeserializeZstd(System.IO.Stream)">
-            <summary>
-            Decompresses, deserializes, and normalizes a Zstandard dictionary stream.
-            </summary>
         </member>
         <member name="M:OpenccNetLib.DictionaryLib.FromJson(System.String)">
              <summary>
@@ -2144,12 +2136,12 @@
             normal hydration.
             </remarks>
         </member>
-        <member name="M:OpenccNetLib.DictionaryLib.ReadCborSlot(System.Formats.Cbor.CborReader)">
+        <member name="M:OpenccNetLib.DictionaryLib.ReadCborSlot(System.Formats.Cbor.CborReader,OpenccNetLib.DictWithMaxLength)">
             <summary>
             Reads one <see cref="T:OpenccNetLib.DictWithMaxLength"/> object from CBOR.
             </summary>
             <param name="reader">Reader positioned at the slot value.</param>
-            <returns>A decoded dictionary slot.</returns>
+            <param name="slot">Existing destination slot to populate.</param>
             <remarks>
             Missing fields retain their normal CLR defaults and are repaired later by
             <see cref="M:OpenccNetLib.DictionaryLib.EnsureDerivedMetadata(OpenccNetLib.DictionaryMaxlength)"/>. Unknown additive fields are skipped,
@@ -2241,13 +2233,6 @@
             <param name="dictionary">
             Optional preloaded dictionary instance to serialize.
             </param>
-        </member>
-        <member name="M:OpenccNetLib.DictionaryLib.LoadJsonCompressed(System.String)">
-            <summary>
-            Loads and normalizes the dictionary from a Zstd-compressed JSON file.
-            </summary>
-            <param name="path">The path to the compressed file.</param>
-            <returns>The deserialized <see cref="T:OpenccNetLib.DictionaryMaxlength"/> instance.</returns>
         </member>
         <member name="T:OpenccNetLib.DictRefs">
              <summary>
@@ -2553,9 +2538,9 @@
             are not semantically modified, and their payload content is preserved.
             </para>
             <para>
-            Use this enumeration when calling any of the strongly typed overloads:
-            <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/> or  
-            <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>.
+            Use this enumeration with either the <see cref="T:OpenccNetLib.Opencc"/> convenience overloads
+            or the <see cref="T:OpenccNetLib.OfficeTextConverter"/> delegate overloads for strongly typed
+            format selection.
             </para>
             </remarks>
         </member>
@@ -2615,11 +2600,39 @@
             Converts an <see cref="T:OpenccNetLib.OfficeFormat"/> value to its canonical lowercase string.
             </summary>
         </member>
+        <member name="T:OpenccNetLib.OfficeTextConverter">
+            <summary>
+            Represents a caller-supplied transformation for text-bearing content inside
+            an Office or EPUB package.
+            </summary>
+            <param name="text">The decoded text fragment selected for conversion.</param>
+            <returns>
+            The transformed text. Implementations must return a non-null string.
+            </returns>
+            <remarks>
+            <para>
+            <see cref="T:OpenccNetLib.OfficeDocConverter"/> owns package parsing, ZIP reconstruction,
+            entry selection, XLSX inline-string handling, EPUB packaging rules, and optional
+            font protection. The delegate owns only the text transformation itself.
+            </para>
+            <para>
+            This allows callers to compose OpenCC conversion with preprocessing or
+            postprocessing steps such as compatibility normalization or DeToFu without
+            coupling the Office/EPUB package layer to those policies.
+            </para>
+            </remarks>
+        </member>
         <member name="T:OpenccNetLib.OfficeDocConverter">
             <summary>
-            Provides high-level APIs for converting Office / EPUB documents using an <see cref="T:OpenccNetLib.Opencc"/> instance.
+            Provides high-level APIs for converting text-bearing content inside Office and
+            EPUB packages.
             </summary>
             <remarks>
+            <para>
+            Callers may supply either an <see cref="T:OpenccNetLib.Opencc"/> instance through the convenience
+            overloads or an <see cref="T:OpenccNetLib.OfficeTextConverter"/> delegate through the extensible
+            overloads. All overloads share the same ZIP/XML/XHTML conversion core.
+            </para>
             <para>
             Supported formats:
             <c>.docx</c>, <c>.xlsx</c>, <c>.pptx</c>, <c>.odt</c>, <c>.ods</c>, <c>.odp</c>, <c>.epub</c>.
@@ -2669,570 +2682,280 @@
             <see langword="false"/>.
             </returns>
         </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+            <summary>
+            Converts an Office or EPUB package in memory by applying a caller-supplied
+            text transformation to its convertible content.
+            </summary>
+            <remarks>
+            <para>
+            This is the primary extensible in-memory API. The delegate receives only the
+            text fragments selected by the package layer; it does not need to understand
+            ZIP structure, document formats, or font protection.
+            </para>
+            <para>
+            The complete source and rebuilt package are memory-resident. For large files
+            backed by the filesystem, prefer <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)"/>.
+            </para>
+            </remarks>
+            <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+            <param name="format">The strongly typed Office or EPUB container format.</param>
+            <param name="textConverter">
+            The text transformation applied to convertible document content.
+            </param>
+            <param name="keepFont">
+            Whether supported font declarations should be protected and restored while
+            text transformation is performed.
+            </param>
+            <returns>A newly allocated byte array containing the rebuilt package.</returns>
+            <exception cref="T:System.ArgumentNullException">
+            Thrown when <paramref name="inputBytes"/> or <paramref name="textConverter"/> is null.
+            </exception>
+            <exception cref="T:System.ArgumentException">
+            Thrown when <paramref name="inputBytes"/> is empty.
+            </exception>
+            <exception cref="T:System.InvalidOperationException">
+            Thrown when the package is invalid, no convertible content is found, or the
+            supplied text converter fails.
+            </exception>
+        </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],System.String,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+            <summary>
+            Converts an Office or EPUB package in memory using a caller-supplied text
+            transformation and a case-insensitive format name.
+            </summary>
+            <remarks>
+            This string-based overload is retained for callers that resolve formats at
+            runtime. New code with a known format should prefer the <see cref="T:OpenccNetLib.OfficeFormat"/>
+            overload for stronger type safety.
+            </remarks>
+            <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+            <param name="format">Format name such as <c>docx</c>, <c>xlsx</c>, or <c>epub</c>.</param>
+            <param name="textConverter">The text transformation applied to convertible content.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <returns>A newly allocated byte array containing the rebuilt package.</returns>
+            <exception cref="T:System.ArgumentNullException">
+            Thrown when <paramref name="inputBytes"/>, <paramref name="format"/>, or
+            <paramref name="textConverter"/> is null.
+            </exception>
+            <exception cref="T:System.ArgumentException">
+            Thrown when the input is empty or <paramref name="format"/> is unsupported.
+            </exception>
+            <exception cref="T:System.InvalidOperationException">Thrown when package conversion fails.</exception>
+        </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesAsync(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously converts an in-memory Office or EPUB package using a
+            caller-supplied text transformation.
+            </summary>
+            <remarks>
+            The underlying package conversion is synchronous and CPU-bound. This method
+            uses <see cref="M:System.Threading.Tasks.Task.Run(System.Action)"/> semantics so UI or request-handling code
+            can await it without occupying the calling thread. Cancellation is honored
+            before the conversion task begins; once conversion is running, it completes normally.
+            </remarks>
+            <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+            <param name="format">The strongly typed Office or EPUB container format.</param>
+            <param name="textConverter">The text transformation applied to convertible content.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+            <returns>A task that resolves to the rebuilt package bytes.</returns>
+        </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesAsync(System.Byte[],System.String,OpenccNetLib.OfficeTextConverter,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously converts an in-memory Office or EPUB package using a
+            caller-supplied text transformation and a format name.
+            </summary>
+            <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+            <param name="format">Format name such as <c>docx</c>, <c>xlsx</c>, or <c>epub</c>.</param>
+            <param name="textConverter">The text transformation applied to convertible content.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+            <returns>A task that resolves to the rebuilt package bytes.</returns>
+        </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+            <summary>
+            Converts a filesystem-backed Office or EPUB package using a caller-supplied
+            text transformation and writes the rebuilt package to disk.
+            </summary>
+            <remarks>
+            <para>
+            This is the primary extensible file API. The source archive is streamed from
+            disk and the rebuilt archive is written to a sibling temporary file. Only
+            selected text-bearing entries are materialized as strings.
+            </para>
+            <para>
+            After conversion, the temporary package is validated and atomically published
+            to <paramref name="outputPath"/>. Non-target package content is preserved.
+            </para>
+            </remarks>
+            <param name="inputPath">Path to the source Office or EPUB package.</param>
+            <param name="outputPath">Path where the rebuilt package will be written.</param>
+            <param name="format">The strongly typed Office or EPUB container format.</param>
+            <param name="textConverter">The text transformation applied to convertible content.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <exception cref="T:System.ArgumentNullException">
+            Thrown when a required path or <paramref name="textConverter"/> is null.
+            </exception>
+            <exception cref="T:System.IO.FileNotFoundException">Thrown when the input file does not exist.</exception>
+            <exception cref="T:System.InvalidOperationException">Thrown when package conversion fails.</exception>
+        </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,System.String,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+            <summary>
+            Converts a filesystem-backed Office or EPUB package using a caller-supplied
+            text transformation and a case-insensitive format name.
+            </summary>
+            <param name="inputPath">Path to the source Office or EPUB package.</param>
+            <param name="outputPath">Path where the rebuilt package will be written.</param>
+            <param name="format">Format name such as <c>docx</c>, <c>xlsx</c>, or <c>epub</c>.</param>
+            <param name="textConverter">The text transformation applied to convertible content.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileAsync(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously converts a filesystem-backed Office or EPUB package using a
+            caller-supplied text transformation.
+            </summary>
+            <remarks>
+            The synchronous streaming file conversion is executed on a background thread.
+            Cancellation is honored before that work begins.
+            </remarks>
+            <param name="inputPath">Path to the source package.</param>
+            <param name="outputPath">Path where the rebuilt package will be written.</param>
+            <param name="format">The strongly typed Office or EPUB container format.</param>
+            <param name="textConverter">The text transformation applied to convertible content.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+            <returns>A task representing the conversion operation.</returns>
+        </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileAsync(System.String,System.String,System.String,OpenccNetLib.OfficeTextConverter,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously converts a filesystem-backed Office or EPUB package using a
+            caller-supplied text transformation and a format name.
+            </summary>
+            <param name="inputPath">Path to the source package.</param>
+            <param name="outputPath">Path where the rebuilt package will be written.</param>
+            <param name="format">Format name such as <c>docx</c>, <c>xlsx</c>, or <c>epub</c>.</param>
+            <param name="textConverter">The text transformation applied to convertible content.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+            <returns>A task representing the conversion operation.</returns>
+        </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)">
-             <summary>
-             Converts an Office or EPUB document represented as a byte array and
-             returns a fully reconstructed container with all textual content converted
-             according to the specified <see cref="T:OpenccNetLib.Opencc"/> configuration.
-             </summary>
-             <remarks>
-             <para>
-             This method is the in-memory counterpart to
-             <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>.
-             It does not create a temporary working directory or temporary package file.
-             </para>
-             <para>
-             The caller supplies the complete ZIP-based container
-             (DOCX/XLSX/PPTX/ODT/ODS/ODP/EPUB) as a <c>byte[]</c>. Conversion remains
-             entirely in memory and the rebuilt package is returned as a new
-             <c>byte[]</c>. Text-bearing XML/XHTML entries are converted one at a time,
-             so the fully decompressed package is never materialized at once.
-             </para>
-             <para>
-             Because both the source package and rebuilt package are memory-resident,
-             callers processing very large documents or packages with large embedded
-             resources should prefer the file-based API when filesystem access is available.
-             </para>
-             <para>
-             If <paramref name="keepFont"/> is enabled, the converter temporarily
-             annotates spans with protected font markers before text conversion
-             and restores the original font-family declarations afterward.
-             </para>
-             </remarks>
-             <param name="inputBytes">Raw bytes of the Office/EPUB container.</param>
-             <param name="format">
-             Specifies the document type using the strongly typed
-             <see cref="T:OpenccNetLib.OfficeFormat"/> enumeration.  
-             This value determines which XML/XHTML parts are inspected and how font
-             preservation and conversion rules are applied.
-            
-             Supported values are:
-             <list type="bullet">
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Docx"/> – WordprocessingML</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Xlsx"/> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Pptx"/> – PresentationML</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Odt"/> – OpenDocument Text</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Ods"/> – OpenDocument Spreadsheet</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Odp"/> – OpenDocument Presentation</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Epub"/> – EPUB 2/3 container (XHTML/HTML/OPF/NCX)</description></item>
-             </list>
-             </param>
-             <param name="converter">
-             An initialized <see cref="T:OpenccNetLib.Opencc"/> instance controlling the desired
-             Simplified/Traditional variant transformation.
-             </param>
-             <param name="punctuation">
-             Whether punctuation normalization is applied (e.g., 「」 → “”).  
-             Default is <c>false</c>.
-             </param>
-             <param name="keepFont">
-             If <c>true</c>, attempts to preserve or re-inject font declarations in
-             supported document types.
-             </param>
-             <returns>
-             A fully converted Office/EPUB container as a byte array.  
-             The returned buffer is safe to write directly to disk or serve to clients.
-             </returns>
-             <exception cref="T:System.ArgumentNullException">
-             Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
-             </exception>
-             <exception cref="T:System.InvalidOperationException">
-             Thrown when the container structure is invalid, the ZIP cannot be read,
-             or the conversion pipeline fails.
-             </exception>
-             <example>
-             Convert an EPUB in memory:
-             <code>
-             var epubBytes = File.ReadAllBytes("novel.epub");
-             var cc = new Opencc("t2s");
-             var converted = ConvertOfficeBytes(
-                 epubBytes,
-                 OfficeFormat.Epub,
-                 cc,
-                 punctuation: true);
-             File.WriteAllBytes("novel_simplified.epub", converted);
-             </code>
-             </example>
+            <summary>
+            Converts an Office or EPUB package in memory using an initialized
+            <see cref="T:OpenccNetLib.Opencc"/> instance.
+            </summary>
+            <remarks>
+            This convenience overload preserves the established OpenccNetLib API and
+            adapts <paramref name="converter"/> to the delegate-based conversion core.
+            </remarks>
+            <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+            <param name="format">The strongly typed Office or EPUB container format.</param>
+            <param name="converter">The initialized OpenCC converter.</param>
+            <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <returns>A newly allocated byte array containing the rebuilt package.</returns>
         </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],System.String,OpenccNetLib.Opencc,System.Boolean,System.Boolean)">
             <summary>
-            Converts an Office or EPUB document represented as a byte array and
-            returns a fully reconstructed container with all textual content converted
-            according to the specified <see cref="T:OpenccNetLib.Opencc"/> configuration.
+            Converts an Office or EPUB package in memory using an initialized
+            <see cref="T:OpenccNetLib.Opencc"/> instance and a format name.
             </summary>
             <remarks>
-            <para>
-            This is the legacy string-based overload. It validates the format string
-            and then delegates to the strongly typed overload
-            <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>.
-            For new code, prefer the <see cref="T:OpenccNetLib.OfficeFormat"/> enum overload for
-            stronger type safety.
-            </para>
-            <para>
-            This method is the in-memory counterpart to
-            <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,System.String,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>
-            and its enum-based overload
-            <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>.
-            It does not create a temporary working directory or temporary package file.
-            </para>
-            <para>
-            The caller supplies the complete ZIP-based container as a <c>byte[]</c>.
-            Conversion remains entirely in memory and the rebuilt package is returned as
-            a new <c>byte[]</c>. Text-bearing XML/XHTML entries are converted one at a time.
-            For large filesystem-backed documents, prefer the file-based API to avoid
-            retaining complete input and output packages in managed memory.
-            </para>
-            <para>
-            If <paramref name="keepFont"/> is enabled, the converter temporarily
-            annotates spans with protected font markers before text conversion
-            and restores the original font-family declarations afterward.
-            </para>
+            This is the legacy string-format convenience overload. New code with a known
+            format should prefer the <see cref="T:OpenccNetLib.OfficeFormat"/> overload.
             </remarks>
-            <param name="inputBytes">Raw bytes of the Office/EPUB container.</param>
-            <param name="format">
-            Normalized format identifier (e.g. <c>"docx"</c>, <c>"xlsx"</c>,
-            <c>"pptx"</c>, <c>"odt"</c>, <c>"ods"</c>, <c>"odp"</c>, <c>"epub"</c>).
-            Case-insensitive. Must be one of the supported format strings.
-            </param>
-            <param name="converter">
-            An initialized <see cref="T:OpenccNetLib.Opencc"/> instance controlling the desired
-            Simplified/Traditional variant transformation.
-            </param>
-            <param name="punctuation">
-            Whether punctuation normalization is applied (e.g., 「」 → “”).  
-            Default is <c>false</c>.
-            </param>
-            <param name="keepFont">
-            If <c>true</c>, attempts to preserve or re-inject font declarations in
-            supported document types.
-            </param>
-            <returns>
-            A fully converted Office/EPUB container as a byte array.  
-            The returned buffer is safe to write directly to disk or serve to clients.
-            </returns>
-            <exception cref="T:System.ArgumentNullException">
-            Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
-            </exception>
-            <exception cref="T:System.ArgumentException">
-            Thrown when <paramref name="format"/> is not one of the supported formats.
-            </exception>
-            <exception cref="T:System.InvalidOperationException">
-            Thrown when the container structure is invalid, the ZIP cannot be read,
-            or the conversion pipeline fails.
-            </exception>
-            <example>
-            Convert an EPUB in memory:
-            <code>
-            var epubBytes = File.ReadAllBytes("novel.epub");
-            var cc = new Opencc("t2s");
-            var converted = ConvertOfficeBytes(
-                epubBytes,
-                "epub",
-                cc,
-                punctuation: true);
-            File.WriteAllBytes("novel_simplified.epub", converted);
-            </code>
-            </example>
+            <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+            <param name="format">Case-insensitive format name.</param>
+            <param name="converter">The initialized OpenCC converter.</param>
+            <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <returns>A newly allocated byte array containing the rebuilt package.</returns>
         </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesAsync(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean,System.Threading.CancellationToken)">
             <summary>
-            Asynchronously converts an Office or EPUB document represented as a byte array
-            and returns the converted container as a byte array.
+            Asynchronously converts an in-memory Office or EPUB package using an
+            initialized <see cref="T:OpenccNetLib.Opencc"/> instance.
             </summary>
-            <remarks>
-            <para>
-            This method mirrors <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>
-            but performs the work asynchronously.  
-            </para>
-            <para>
-            The underlying package conversion is synchronous and memory-based.
-            This wrapper offloads that CPU-bound work to a background thread with
-            <c>Task.Run</c> so callers can await it without blocking
-            a UI or request-handling thread.
-            </para>
-            <para>
-            The returned byte array is a full ZIP container ready to be written to disk,
-            streamed to a browser, or re-opened by Office/EPUB readers.
-            </para>
-            </remarks>
-            <param name="inputBytes">Raw contents of the document to convert.</param>
-            <param name="format">
-            Document container type expressed as an <see cref="T:OpenccNetLib.OfficeFormat"/> value
-            (e.g. <see cref="F:OpenccNetLib.OfficeFormat.Docx"/>, <see cref="F:OpenccNetLib.OfficeFormat.Epub"/>).
-            </param>
-            <param name="converter">The active <see cref="T:OpenccNetLib.Opencc"/> converter.</param>
-            <param name="punctuation">Whether punctuation conversion is applied.</param>
-            <param name="keepFont">Whether to preserve font declarations where possible.</param>
-            <param name="cancellationToken">
-            Optional cancellation token. Cancellation is honored before the background
-            conversion task starts; once the synchronous conversion is running, it
-            continues to completion.
-            </param>
-            <returns>
-            A task that resolves to the converted Office/EPUB container bytes.
-            </returns>
-            <exception cref="T:System.ArgumentNullException">
-            Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
-            </exception>
-            <exception cref="T:System.InvalidOperationException">
-            Thrown if the conversion process fails or the input container is invalid.
-            </exception>
-            <example>
-            <code>
-            byte[] result = await ConvertOfficeBytesAsync(
-                inputBytes,
-                OfficeFormat.Docx,
-                new Opencc("s2tw"),
-                punctuation: true,
-                keepFont: false,
-                cancellationToken);
-            </code>
-            </example>
+            <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+            <param name="format">The strongly typed Office or EPUB container format.</param>
+            <param name="converter">The initialized OpenCC converter.</param>
+            <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+            <returns>A task that resolves to the rebuilt package bytes.</returns>
         </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesAsync(System.Byte[],System.String,OpenccNetLib.Opencc,System.Boolean,System.Boolean,System.Threading.CancellationToken)">
             <summary>
-            Asynchronously converts an Office or EPUB document represented as a byte array
-            and returns the converted container as a byte array.
+            Asynchronously converts an in-memory Office or EPUB package using an
+            initialized <see cref="T:OpenccNetLib.Opencc"/> instance and a format name.
             </summary>
-            <remarks>
-            <para>
-            This method mirrors <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],System.String,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>
-            but performs the work asynchronously.  
-            </para>
-            <para>
-            The underlying package conversion is synchronous and memory-based.
-            This wrapper delegates that work to a background thread using
-            <c>Task.Run</c> so callers can await it without blocking
-            the calling thread.
-            </para>
-            <para>
-            The returned byte array is a full ZIP container ready to be written to disk,
-            streamed to a browser, or re-opened by Office/EPUB readers.
-            </para>
-            </remarks>
-            <param name="inputBytes">Raw contents of the document to convert.</param>
-            <param name="format">Document format (e.g. <c>"docx"</c>, <c>"epub"</c>).</param>
-            <param name="converter">The active <see cref="T:OpenccNetLib.Opencc"/> converter.</param>
-            <param name="punctuation">Whether punctuation conversion is applied.</param>
-            <param name="keepFont">Whether to preserve font declarations where possible.</param>
-            <param name="cancellationToken">
-            Optional cancellation token. Cancellation is honored before the background
-            conversion task starts; once the synchronous conversion is running, it
-            continues to completion.
-            </param>
-            <returns>
-            A task that resolves to the converted Office/EPUB container bytes.
-            </returns>
-            <exception cref="T:System.ArgumentNullException">
-            Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
-            </exception>
-            <exception cref="T:System.ArgumentException">
-            Thrown when <paramref name="format"/> is not recognized.
-            </exception>
-            <exception cref="T:System.InvalidOperationException">
-            Thrown if the conversion process fails or the input container is invalid.
-            </exception>
-            <example>
-            <code>
-            byte[] result = await ConvertOfficeBytesAsync(
-                inputBytes,
-                "docx",
-                new Opencc("s2tw"),
-                punctuation: true,
-                keepFont: false,
-                cancellationToken);
-            </code>
-            For new code, prefer the OfficeFormat overload for stronger type safety.
-            </example>
+            <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+            <param name="format">Case-insensitive format name.</param>
+            <param name="converter">The initialized OpenCC converter.</param>
+            <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+            <returns>A task that resolves to the rebuilt package bytes.</returns>
         </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)">
-             <summary>
-             Converts an Office or EPUB document on disk and writes the converted
-             result to the specified output file.
-             </summary>
-             <remarks>
-             <para>
-             This method is the primary high-level API for desktop, CLI tooling,
-             and automation scripts. It opens the source package directly from disk,
-             processes ZIP entries sequentially, materializes only selected text-bearing
-             XML/XHTML parts for OpenCC conversion, and writes the rebuilt package to a
-             sibling temporary file.
-             </para>
-             <para>
-             After conversion completes, the temporary package is reopened and validated
-             as a ZIP container before it replaces the requested output path. The complete
-             source or destination package is never loaded into a managed <c>byte[]</c>.
-             This makes the file API preferable for large Office/EPUB documents or packages
-             containing large embedded fonts, images, media, or other binary resources.
-             </para>
-             <para>
-             The method preserves the content of non-target assets (images, embedded
-             fonts, media, stylesheets, relationships, metadata, etc.) while rebuilding
-             the ZIP package. Only selected text-bearing XML/XHTML parts are modified.
-             </para>
-             <para>
-             Supported formats:
-             <list type="bullet">
-               <item><description><c>docx</c> – WordprocessingML</description></item>
-               <item><description><c>xlsx</c> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
-               <item><description><c>pptx</c> – PresentationML slides/notes/layouts/masters</description></item>
-               <item><description><c>odt</c>/<c>ods</c>/<c>odp</c> – OpenDocument Text/Spreadsheet/Presentation</description></item>
-               <item><description><c>epub</c> – XHTML/HTML/OPF/NCX documents</description></item>
-             </list>
-             </para>
-             <para>
-             If <paramref name="keepFont"/> is enabled, the converter injects font
-             attributes into target text spans, allowing regional substitutions
-             (e.g., Traditional → Simplified fonts) to be preserved in the output.
-             </para>
-             </remarks>
-             <param name="inputPath">Full path to the source Office/EPUB file.</param>
-             <param name="outputPath">
-             Path where the converted file will be written.  
-             The parent directory is created automatically if it does not already exist.
-             </param>
-             <param name="format">
-             Specifies the document type using the strongly typed
-             <see cref="T:OpenccNetLib.OfficeFormat"/> enumeration.  
-             This value determines which XML/XHTML parts are inspected and how font
-             preservation and conversion rules are applied.
-            
-             Supported values are:
-             <list type="bullet">
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Docx"/> – WordprocessingML</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Xlsx"/> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Pptx"/> – PresentationML</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Odt"/> – OpenDocument Text</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Ods"/> – OpenDocument Spreadsheet</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Odp"/> – OpenDocument Presentation</description></item>
-               <item><description><see cref="F:OpenccNetLib.OfficeFormat.Epub"/> – EPUB 2/3 container (XHTML/HTML/OPF/NCX)</description></item>
-             </list>
-             </param>
-             <param name="converter">
-             An initialized <see cref="T:OpenccNetLib.Opencc"/> instance containing the desired conversion configuration.
-             </param>
-             <param name="punctuation">
-             Whether punctuation should also be converted using OpenCC rules (e.g.,「」 → “”).  
-             Default is <c>false</c>.
-             </param>
-             <param name="keepFont">
-             Preserves or injects font attributes in converted output when supported.  
-             Default is <c>false</c>.
-             </param>
-             <exception cref="T:System.ArgumentNullException">
-             Thrown when <paramref name="inputPath"/>, <paramref name="outputPath"/>, or <paramref name="converter"/> is null.
-             </exception>
-             <exception cref="T:System.IO.FileNotFoundException">
-             Thrown when the input file does not exist.
-             </exception>
-             <exception cref="T:System.IO.InvalidDataException">
-             Thrown if the document is not a valid ZIP-based Office/EPUB container.
-             </exception>
-             <example>
-             Convert Traditional Chinese DOCX → Simplified (retain punctuation):
-             <code>
-             Opencc cc = new Opencc("t2s");
-             ConvertOfficeFile(
-                 "input.docx",
-                 "out.docx",
-                 OfficeFormat.Docx,
-                 cc,
-                 punctuation: true);
-             </code>
-             </example>
+            <summary>
+            Converts a filesystem-backed Office or EPUB package using an initialized
+            <see cref="T:OpenccNetLib.Opencc"/> instance.
+            </summary>
+            <remarks>
+            This convenience overload preserves the established OpenccNetLib API and
+            forwards OpenCC conversion through the delegate-based streaming core.
+            </remarks>
+            <param name="inputPath">Path to the source Office or EPUB package.</param>
+            <param name="outputPath">Path where the rebuilt package will be written.</param>
+            <param name="format">The strongly typed Office or EPUB container format.</param>
+            <param name="converter">The initialized OpenCC converter.</param>
+            <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
         </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,System.String,OpenccNetLib.Opencc,System.Boolean,System.Boolean)">
             <summary>
-            Converts an Office or EPUB document on disk and writes the converted
-            result to the specified output file.
+            Converts a filesystem-backed Office or EPUB package using an initialized
+            <see cref="T:OpenccNetLib.Opencc"/> instance and a format name.
             </summary>
-            <remarks>
-            <para>
-            This method is the primary high-level API for desktop, CLI tooling,
-            and automation scripts. It opens the source package directly from disk,
-            processes ZIP entries sequentially, materializes only selected text-bearing
-            XML/XHTML parts for OpenCC conversion, and writes the rebuilt package to a
-            sibling temporary file.
-            </para>
-            <para>
-            After conversion completes, the temporary package is reopened and validated
-            as a ZIP container before it replaces the requested output path. The complete
-            source or destination package is never loaded into a managed <c>byte[]</c>.
-            This makes the file API preferable for large Office/EPUB documents or packages
-            containing large embedded fonts, images, media, or other binary resources.
-            </para>
-            <para>
-            The method preserves the content of non-target assets (images, embedded
-            fonts, media, stylesheets, relationships, metadata, etc.) while rebuilding
-            the ZIP package. Only selected text-bearing XML/XHTML parts are modified.
-            </para>
-            <para>
-            Supported formats:
-            <list type="bullet">
-              <item><description><c>docx</c> – WordprocessingML</description></item>
-              <item><description><c>xlsx</c> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
-              <item><description><c>pptx</c> – PresentationML slides/notes/layouts/masters</description></item>
-              <item><description><c>odt</c>/<c>ods</c>/<c>odp</c> – OpenDocument Text/Spreadsheet/Presentation</description></item>
-              <item><description><c>epub</c> – XHTML/HTML/OPF/NCX documents</description></item>
-            </list>
-            </para>
-            <para>
-            If <paramref name="keepFont"/> is enabled, the converter injects font
-            attributes into target text spans, allowing regional substitutions
-            (e.g., Traditional → Simplified fonts) to be preserved in the output.
-            </para>
-            </remarks>
-            <param name="inputPath">Full path to the source Office/EPUB file.</param>
-            <param name="outputPath">
-            Path where the converted file will be written.  
-            The parent directory is created automatically if it does not already exist.
-            </param>
-            <param name="format">
-            Normalized format identifier (e.g. <c>"docx"</c>, <c>"xlsx"</c>, <c>"epub"</c>).  
-            Must match the container type of <paramref name="inputPath"/>.
-            This overload accepts a raw string and is preserved for backward compatibility.
-            For new code, prefer the OfficeFormat enum overload.
-            </param>
-            <param name="converter">
-            An initialized <see cref="T:OpenccNetLib.Opencc"/> instance containing the desired conversion configuration.
-            </param>
-            <param name="punctuation">
-            Whether punctuation should also be converted using OpenCC rules (e.g.,「」 → “”).  
-            Default is <c>false</c>.
-            </param>
-            <param name="keepFont">
-            Preserves or injects font attributes in converted output when supported.  
-            Default is <c>false</c>.
-            </param>
-            <exception cref="T:System.ArgumentNullException">
-            Thrown when <paramref name="inputPath"/>, <paramref name="outputPath"/>, or <paramref name="converter"/> is null.
-            </exception>
-            <exception cref="T:System.IO.FileNotFoundException">
-            Thrown when the input file does not exist.
-            </exception>
-            <exception cref="T:System.IO.InvalidDataException">
-            Thrown if the document is not a valid ZIP-based Office/EPUB container.
-            </exception>
-            <example>
-            Convert Traditional Chinese DOCX → Simplified (retain punctuation):
-            <code>
-            Opencc cc = new Opencc("t2s");
-            ConvertOfficeFile("input.docx", "out.docx", "docx", cc, punctuation: true);
-            </code>
-            </example>
+            <param name="inputPath">Path to the source Office or EPUB package.</param>
+            <param name="outputPath">Path where the rebuilt package will be written.</param>
+            <param name="format">Case-insensitive format name.</param>
+            <param name="converter">The initialized OpenCC converter.</param>
+            <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
         </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileAsync(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean,System.Threading.CancellationToken)">
             <summary>
-            Asynchronously converts an Office or EPUB document and writes the
-            converted result to the specified output file.
+            Asynchronously converts a filesystem-backed Office or EPUB package using an
+            initialized <see cref="T:OpenccNetLib.Opencc"/> instance.
             </summary>
-            <remarks>
-            <para>
-            This method is an asynchronous wrapper around the synchronous file
-            conversion pipeline and delegates the work to a background thread using
-            <c>Task.Run</c>.
-            </para>
-            <para>
-            The behavior and conversion rules are identical to
-            <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>.
-            and its string-based overload
-            <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,System.String,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>.
-            </para>
-            <para>
-            This wrapper is useful when synchronous package conversion should not
-            occupy the calling thread.
-            </para>
-            </remarks>
-            <param name="inputPath">Full path to the source Office/EPUB file.</param>
-            <param name="outputPath">Destination path for the converted file.</param>
-            <param name="format">
-            Document container type expressed as an <see cref="T:OpenccNetLib.OfficeFormat"/> value
-            (e.g. <see cref="F:OpenccNetLib.OfficeFormat.Docx"/>, <see cref="F:OpenccNetLib.OfficeFormat.Epub"/>).
-            </param>
-            <param name="converter">The active OpenCC converter instance.</param>
-            <param name="punctuation">Whether punctuation should also be converted.</param>
-            <param name="keepFont">Whether font attributes should be preserved.</param>
-            <param name="cancellationToken">
-            Optional cancellation token.  
-            Cancellation is honored before the background conversion task starts;
-            once the synchronous conversion is running, it continues to completion.
-            </param>
-            <returns>
-            A task that represents the asynchronous conversion operation.
-            </returns>
-            <exception cref="T:System.ArgumentNullException">
-            Thrown when required arguments are null.
-            </exception>
-            <exception cref="T:System.IO.FileNotFoundException">
-            Thrown when the input file does not exist.
-            </exception>
-            <example>
-            <code>
-            await ConvertOfficeFileAsync(
-                "book.epub",
-                "book_converted.epub",
-                OfficeFormat.Epub,
-                new Opencc("s2twp"),
-                punctuation: true,
-                keepFont: true,
-                cancellationToken);
-            </code>
-            </example>
+            <param name="inputPath">Path to the source package.</param>
+            <param name="outputPath">Path where the rebuilt package will be written.</param>
+            <param name="format">The strongly typed Office or EPUB container format.</param>
+            <param name="converter">The initialized OpenCC converter.</param>
+            <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+            <returns>A task representing the conversion operation.</returns>
         </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileAsync(System.String,System.String,System.String,OpenccNetLib.Opencc,System.Boolean,System.Boolean,System.Threading.CancellationToken)">
             <summary>
-            Asynchronously converts an Office or EPUB document and writes the
-            converted result to the specified output file.
+            Asynchronously converts a filesystem-backed Office or EPUB package using an
+            initialized <see cref="T:OpenccNetLib.Opencc"/> instance and a format name.
             </summary>
-            <remarks>
-            <para>
-            This method is an asynchronous wrapper around the synchronous file
-            conversion pipeline and delegates the work to a background thread using
-            <c>Task.Run</c>.
-            </para>
-            <para>
-            The behavior and conversion rules are identical to
-            <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,System.String,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>.
-            </para>
-            <para>
-            This wrapper is useful when synchronous package conversion should not
-            occupy the calling thread.
-            </para>
-            </remarks>
-            <param name="inputPath">Full path to the source Office/EPUB file.</param>
-            <param name="outputPath">Destination path for the converted file.</param>
-            <param name="format">Document format (e.g. <c>"docx"</c>, <c>"epub"</c>).</param>
-            <param name="converter">The active OpenCC converter instance.</param>
-            <param name="punctuation">Whether punctuation should also be converted.</param>
-            <param name="keepFont">Whether font attributes should be preserved.</param>
-            <param name="cancellationToken">
-            Optional cancellation token.  
-            Cancellation is honored before the background conversion task starts;
-            once the synchronous conversion is running, it continues to completion.
-            </param>
-            <returns>
-            A task that represents the asynchronous conversion operation.
-            </returns>
-            <exception cref="T:System.ArgumentNullException">
-            Thrown when required arguments are null.
-            </exception>
-            <exception cref="T:System.IO.FileNotFoundException">
-            Thrown when the input file does not exist.
-            </exception>
-            <example>
-            <code>
-            await ConvertOfficeFileAsync(
-                "book.epub",
-                "book_converted.epub",
-                "epub",
-                new Opencc("s2twp"),
-                punctuation: true,
-                keepFont: true,
-                cancellationToken);
-            </code>
-            </example>
+            <param name="inputPath">Path to the source package.</param>
+            <param name="outputPath">Path where the rebuilt package will be written.</param>
+            <param name="format">Case-insensitive format name.</param>
+            <param name="converter">The initialized OpenCC converter.</param>
+            <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+            <param name="keepFont">Whether supported font declarations should be preserved.</param>
+            <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+            <returns>A task representing the conversion operation.</returns>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesCore(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesCore(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)">
             <summary>
             Core in-memory conversion engine for Office/EPUB ZIP containers.
             </summary>
@@ -3246,7 +2969,7 @@
             <para>
             Only text-bearing XML/XHTML entries selected for the specified
             <see cref="T:OpenccNetLib.OfficeFormat"/> are materialized as strings. Those entries are
-            converted with <see cref="T:OpenccNetLib.Opencc"/>, while all other entries are copied
+            converted with the supplied <see cref="T:OpenccNetLib.OfficeTextConverter"/>, while all other entries are copied
             unchanged at the payload level and repackaged into the new container.
             </para>
             <para>
@@ -3261,8 +2984,7 @@
             </remarks>
             <param name="inputBytes">Raw ZIP container bytes from the input document.</param>
             <param name="format">The strongly typed Office/EPUB document format.</param>
-            <param name="converter">The active <see cref="T:OpenccNetLib.Opencc"/> converter.</param>
-            <param name="punctuation">Whether punctuation conversion should be applied.</param>
+            <param name="textConverter">The caller-supplied text transformation.</param>
             <param name="keepFont">
             Whether supported font declarations should be protected with temporary
             markers while text conversion is performed.
@@ -3272,13 +2994,13 @@
             message, generated package bytes on success, and any captured exception.
             </returns>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileCore(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileCore(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)">
             <summary>
             Converts a filesystem-backed Office/EPUB package using streaming file I/O.
             </summary>
             <remarks>
             <para>
-            Unlike <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)"/>,
+            Unlike the in-memory <c>ConvertOfficeBytes</c> APIs,
             this path never calls <see cref="M:System.IO.File.ReadAllBytes(System.String)"/> and never builds
             the complete output package in a <see cref="T:System.IO.MemoryStream"/>. Only selected
             XML/XHTML entries are materialized as strings.
@@ -3297,7 +3019,7 @@
             </para>
             </remarks>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ProcessArchive(System.IO.Compression.ZipArchive,System.IO.Compression.ZipArchive,OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ProcessArchive(System.IO.Compression.ZipArchive,System.IO.Compression.ZipArchive,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)">
             <summary>
             Processes an opened Office/EPUB ZIP package and writes its rebuilt entries to
             the supplied output archive.
@@ -3308,7 +3030,7 @@
             </remarks>
             <returns>The number of text-bearing XML/XHTML entries converted.</returns>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ProcessEntry(System.IO.Compression.ZipArchiveEntry,System.IO.Compression.ZipArchive,OpenccNetLib.OfficeFormat,OpenccNetLib.Opencc,System.Boolean,System.Boolean,System.Int32@)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ProcessEntry(System.IO.Compression.ZipArchiveEntry,System.IO.Compression.ZipArchive,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean,System.Int32@)">
             <summary>
             Processes one ZIP entry and writes its counterpart to the output package.
             </summary>
@@ -3323,7 +3045,7 @@
             the specified document format.
             </summary>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertTextEntry(System.String,OpenccNetLib.OfficeFormat,System.String,OpenccNetLib.Opencc,System.Boolean,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertTextEntry(System.String,OpenccNetLib.OfficeFormat,System.String,OpenccNetLib.OfficeTextConverter,System.Boolean)">
             <summary>
             Converts one selected XML/XHTML entry while preserving protected font
             declarations when requested.
@@ -3376,6 +3098,28 @@
             <summary>
             Returns the final path component of a normalized ZIP entry name.
             </summary>
+        </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ShouldMaskFonts(OpenccNetLib.OfficeFormat,System.String)">
+            <summary>
+            Returns whether font declarations should be protected for the specified
+            converted package entry.
+            </summary>
+        </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ApplyTextConverter(OpenccNetLib.OfficeTextConverter,System.String)">
+            <summary>
+            Applies the caller-supplied text transformation and enforces the non-null
+            return contract of <see cref="T:OpenccNetLib.OfficeTextConverter"/>.
+            </summary>
+        </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertXlsxXmlPart(System.String,System.String,OpenccNetLib.OfficeTextConverter)">
+            <summary>
+            Applies text conversion to an XLSX text-bearing XML part while leaving
+            formulas, numeric cells, and non-inline worksheet metadata untouched.
+            </summary>
+            <remarks>
+            Shared strings are converted as a whole XML part. Worksheet XML is handled
+            narrowly: only text nodes inside <c>inlineStr</c> cells are transformed.
+            </remarks>
         </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.ValidateInputBytes(System.Byte[])">
             <summary>Validates that an in-memory package was supplied.</summary>
@@ -3734,8 +3478,8 @@
         </member>
         <member name="F:OpenccNetLib.Opencc._planCache">
             <summary>
-            Holds the isolated conversion-plan cache for a frozen instance or an instance created with custom
-            dictionary specifications.
+            Holds the isolated conversion-plan cache for a frozen instance or an instance created with a custom
+            base and/or custom dictionary specifications.
             </summary>
             <remarks>
             This field is <see langword="null"/> for ordinary non-frozen instances, which continue
@@ -4039,209 +3783,40 @@
             Thrown when the JSON payload does not deserialize into a valid dictionary.
             </exception>
         </member>
-        <member name="M:OpenccNetLib.Opencc.#ctor(System.String,System.Boolean,System.Boolean)">
+        <member name="M:OpenccNetLib.Opencc.#ctor(System.String,OpenccNetLib.DictionaryMaxlength,System.Collections.Generic.IEnumerable{OpenccNetLib.CustomDictSpec},System.Boolean,System.Boolean)">
             <summary>
-            Initializes a new instance of the <see cref="T:OpenccNetLib.Opencc"/> class with the specified configuration.
-            This constructor ensures the global dictionary and its associated lists are initialized.
+            Initializes an <see cref="T:OpenccNetLib.Opencc"/> instance from a configuration name and optional dictionary customization.
             </summary>
-            <param name="config">The conversion configuration (e.g., "s2t", "t2s").</param>
-            <param name="isPreserveIds">
-            Whether to preserve complete Unicode IDS expressions during conversion. Default: <c>false</c>.
-            </param>
-            <param name="isFrozen">
-            Whether to make the instance configuration immutable and use a private conversion-plan cache
-            based on <see cref="P:OpenccNetLib.DictionaryLib.Provider"/>. Default: <see langword="false"/>.
-            </param>
-        </member>
-        <member name="M:OpenccNetLib.Opencc.#ctor(OpenccNetLib.OpenccConfig,System.Boolean,System.Boolean)">
-            <summary>
-            Initializes a new instance of the <see cref="T:OpenccNetLib.Opencc"/> class using an <see cref="T:OpenccNetLib.OpenccConfig"/> enum value.
-            This overload is the preferred way to create an Opencc instance.
-            </summary>
-            <param name="configEnum">The OpenCC conversion configuration enum value.</param>
-            <param name="isPreserveIds">
-            Whether to preserve complete Unicode IDS expressions during conversion. Default: <c>false</c>.
-            </param>
-            <param name="isFrozen">
-            Whether to make the instance configuration immutable and use a private conversion-plan cache
-            based on <see cref="P:OpenccNetLib.DictionaryLib.Provider"/>. Default: <see langword="false"/>.
-            </param>
-        </member>
-        <member name="M:OpenccNetLib.Opencc.#ctor(OpenccNetLib.OpenccConfig,System.Collections.Generic.IEnumerable{OpenccNetLib.CustomDictSpec},System.Boolean,System.Boolean)">
-            <summary>
-            Initializes a new <see cref="T:OpenccNetLib.Opencc"/> instance with an isolated custom
-            dictionary set.
-            </summary>
+            <param name="config">The conversion configuration name (for example, <c>"s2t"</c>).</param>
+            <param name="customBase">The base dictionary, or <see langword="null"/> to choose the base automatically.</param>
+            <param name="customDictSpecs">Specifications applied in enumeration order after choosing the base, or <see langword="null"/> for none.</param>
+            <param name="isPreserveIds">Whether to preserve complete Unicode IDS expressions.</param>
+            <param name="isFrozen">Whether the instance configuration and IDS setting are immutable.</param>
             <remarks>
-            <para>
-            The specification sequence is enumerated exactly once and retained as an array
-            for this instance's lifetime. The instance owns a private
-            <see cref="T:OpenccNetLib.ConversionPlanCache"/> built from the currently active provider for a
-            non-frozen instance, or <see cref="P:OpenccNetLib.DictionaryLib.Provider"/> for a frozen instance,
-            plus those specifications. Construction
-            does not replace <see cref="P:OpenccNetLib.ConversionPlanCache.Current"/> or modify the active
-            global provider.
-            </para>
-            <para>
-            This allows instance custom dictionaries to layer on top of the dictionary
-            currently selected through the global provider, including one installed through
-            <see cref="M:OpenccNetLib.Opencc.UseCustomDictionary(OpenccNetLib.DictionaryMaxlength)"/>. Subsequent global provider
-            changes do not affect this instance's private dictionary snapshot.
-            </para>
-            <para>
-            Later changes through <see cref="M:OpenccNetLib.Opencc.SetConfig(OpenccNetLib.OpenccConfig)"/> or
-            <see cref="P:OpenccNetLib.Opencc.Config"/> reuse the same custom dictionary snapshot. An empty
-            specification sequence still creates an isolated plan cache whose effective
-            mappings are those of the active provider captured at construction time.
-            </para>
-            <para>
-            Plan lookup is thread-safe and isolated from other instances. As with existing
-            mutable instance properties, callers should synchronize concurrent configuration
-            or <see cref="P:OpenccNetLib.Opencc.IsPreserveIds"/> changes.
-            </para>
+            The effective dictionary is <c>customBase ?? automaticBase</c>, followed by <paramref name="customDictSpecs"/> when supplied.
+            Mutable instances choose the active global provider; frozen instances choose <see cref="P:OpenccNetLib.DictionaryLib.Provider"/>.
+            The ordinary mutable <c>(null, null)</c> case shares <see cref="P:OpenccNetLib.ConversionPlanCache.Current"/> without a private cache.
             </remarks>
-            <param name="configEnum">The OpenCC conversion configuration enum value.</param>
-            <param name="customDictSpecs">
-            Custom dictionary specifications applied in enumeration order to the active
-            dictionary snapshot.
-            </param>
-            <param name="isPreserveIds">
-            Whether to preserve complete Unicode IDS expressions during conversion.
-            Default: <see langword="false"/>.
-            </param>
-            <param name="isFrozen">
-            Whether to make the instance configuration immutable and build the instance-owned
-            custom dictionary from <see cref="P:OpenccNetLib.DictionaryLib.Provider"/> instead of the active
-            global provider. Default: <see langword="false"/>.
-            </param>
-            <exception cref="T:System.ArgumentNullException">
-            <paramref name="customDictSpecs"/> is <see langword="null"/>.
-            </exception>
         </member>
-        <member name="M:OpenccNetLib.Opencc.#ctor(System.String,System.Collections.Generic.IEnumerable{OpenccNetLib.CustomDictSpec},System.Boolean,System.Boolean)">
+        <member name="M:OpenccNetLib.Opencc.#ctor(OpenccNetLib.OpenccConfig,OpenccNetLib.DictionaryMaxlength,System.Collections.Generic.IEnumerable{OpenccNetLib.CustomDictSpec},System.Boolean,System.Boolean)">
             <summary>
-            Initializes a new <see cref="T:OpenccNetLib.Opencc"/> instance with an isolated custom
-            dictionary set using the specified configuration name.
+            Initializes an <see cref="T:OpenccNetLib.Opencc"/> instance from a typed configuration and optional dictionary customization.
             </summary>
+            <param name="config">The conversion configuration.</param>
+            <param name="customBase">The base dictionary, or <see langword="null"/> to choose the base automatically.</param>
+            <param name="customDictSpecs">Specifications applied in enumeration order after choosing the base, or <see langword="null"/> for none.</param>
+            <param name="isPreserveIds">Whether to preserve complete Unicode IDS expressions.</param>
+            <param name="isFrozen">Whether the instance configuration and IDS setting are immutable.</param>
             <remarks>
-            <para>
-            The specification sequence is enumerated exactly once and retained for this
-            instance's lifetime. The custom dictionary is built from the currently active
-            provider for a non-frozen instance, or <see cref="P:OpenccNetLib.DictionaryLib.Provider"/> for
-            a frozen instance, plus the supplied specifications, and uses an isolated
-            conversion-plan cache.
-            </para>
-            <para>
-            Construction does not modify the active global provider. Subsequent global
-            provider changes do not affect this instance, and configuration changes reuse
-            the same isolated custom dictionary snapshot.
-            </para>
+            The effective dictionary is <c>customBase ?? automaticBase</c>, followed by <paramref name="customDictSpecs"/> when supplied.
+            Mutable instances choose the active global provider; frozen instances choose <see cref="P:OpenccNetLib.DictionaryLib.Provider"/>.
+            The ordinary mutable <c>(null, null)</c> case shares <see cref="P:OpenccNetLib.ConversionPlanCache.Current"/> without a private cache.
             </remarks>
-            <param name="config">
-            The OpenCC conversion configuration name.
-            </param>
-            <param name="customDictSpecs">
-            Custom dictionary specifications applied in enumeration order to the active
-            dictionary snapshot.
-            </param>
-            <param name="isPreserveIds">
-            Whether to preserve complete Unicode IDS expressions during conversion.
-            Default: <see langword="false"/>.
-            </param>
-            <param name="isFrozen">
-            Whether to make the instance configuration immutable and build the instance-owned
-            custom dictionary from <see cref="P:OpenccNetLib.DictionaryLib.Provider"/> instead of the active
-            global provider. Default: <see langword="false"/>.
-            </param>
-            <exception cref="T:System.ArgumentException">
-            <paramref name="config"/> is null, empty, or not a supported configuration.
-            </exception>
-            <exception cref="T:System.ArgumentNullException">
-            <paramref name="customDictSpecs"/> is <see langword="null"/>.
-            </exception>
         </member>
-        <member name="M:OpenccNetLib.Opencc.#ctor(System.String,OpenccNetLib.DictionaryMaxlength,System.Boolean,System.Boolean)">
+        <member name="M:OpenccNetLib.Opencc.CreatePlanCache(OpenccNetLib.DictionaryMaxlength,System.Collections.Generic.IEnumerable{OpenccNetLib.CustomDictSpec},System.Boolean)">
             <summary>
-            Initializes a new <see cref="T:OpenccNetLib.Opencc"/> instance with the specified configuration
-            and an explicitly supplied base dictionary.
+            Selects the constructor base and creates an instance-owned cache only when needed.
             </summary>
-            <param name="config">
-            The conversion configuration name, such as <c>s2t</c>, <c>t2s</c>,
-            <c>s2tw</c>, or <c>hk2sp</c>.
-            </param>
-            <param name="customBase">
-            The <see cref="T:OpenccNetLib.DictionaryMaxlength"/> instance to use as the base dictionary
-            for this converter.
-            </param>
-            <param name="isPreserveIds">
-            Whether to preserve complete Unicode IDS expressions during conversion.
-            Default: <see langword="false"/>.
-            </param>
-            <param name="isFrozen">
-            Whether to make the instance configuration immutable.
-            Default: <see langword="false"/>.
-            </param>
-            <remarks>
-            <para>
-            The supplied <paramref name="customBase"/> is used directly as the base of an
-            instance-owned <see cref="T:OpenccNetLib.ConversionPlanCache"/>. The active global dictionary
-            provider and <see cref="P:OpenccNetLib.ConversionPlanCache.Current"/> are not modified.
-            </para>
-            <para>
-            This constructor is useful when a dictionary has been loaded explicitly, for
-            example with <see cref="M:OpenccNetLib.DictionaryLib.FromZstd(System.String)"/> or
-            <see cref="M:OpenccNetLib.DictionaryLib.FromZstdBytes(System.Byte[])"/>, and should be isolated to a
-            specific converter instance.
-            </para>
-            <para>
-            Subsequent configuration changes on this instance reuse the same supplied
-            base dictionary.
-            </para>
-            </remarks>
-            <exception cref="T:System.ArgumentNullException">
-            <paramref name="customBase"/> is <see langword="null"/>.
-            </exception>
-        </member>
-        <member name="M:OpenccNetLib.Opencc.#ctor(OpenccNetLib.OpenccConfig,OpenccNetLib.DictionaryMaxlength,System.Boolean,System.Boolean)">
-            <summary>
-            Initializes a new <see cref="T:OpenccNetLib.Opencc"/> instance with the specified
-            <see cref="T:OpenccNetLib.OpenccConfig"/> and an explicitly supplied base dictionary.
-            </summary>
-            <param name="configEnum">
-            The <see cref="T:OpenccNetLib.OpenccConfig"/> conversion configuration to use.
-            </param>
-            <param name="customBase">
-            The <see cref="T:OpenccNetLib.DictionaryMaxlength"/> instance to use as the base dictionary
-            for this converter.
-            </param>
-            <param name="isPreserveIds">
-            Whether to preserve complete Unicode IDS expressions during conversion.
-            Default: <see langword="false"/>.
-            </param>
-            <param name="isFrozen">
-            Whether to make the instance configuration immutable.
-            Default: <see langword="false"/>.
-            </param>
-            <remarks>
-            <para>
-            The supplied <paramref name="customBase"/> is used directly as the base of an
-            instance-owned <see cref="T:OpenccNetLib.ConversionPlanCache"/>. The active global dictionary
-            provider and <see cref="P:OpenccNetLib.ConversionPlanCache.Current"/> are not modified.
-            </para>
-            <para>
-            This constructor is useful when a dictionary has been loaded explicitly, for
-            example with <see cref="M:OpenccNetLib.DictionaryLib.FromZstd(System.String)"/> or
-            <see cref="M:OpenccNetLib.DictionaryLib.FromZstdBytes(System.Byte[])"/>, and should be isolated to a
-            specific converter instance.
-            </para>
-            <para>
-            Subsequent configuration changes on this instance reuse the same supplied
-            base dictionary.
-            </para>
-            </remarks>
-            <exception cref="T:System.ArgumentNullException">
-            <paramref name="customBase"/> is <see langword="null"/>.
-            </exception>
         </member>
         <member name="M:OpenccNetLib.Opencc.WithCustomDictionary(System.Collections.Generic.IEnumerable{OpenccNetLib.CustomDictSpec})">
             <summary>
