@@ -3083,6 +3083,12 @@
             Creates the output entry corresponding to an input entry and preserves its
             ZIP timestamp where possible.
             </summary>
+            <remarks>
+            ZIP entry names are validated before they are reproduced in the rebuilt
+            archive. Although this converter never extracts entries to the filesystem,
+            rejecting rooted and parent-traversal names keeps malformed or hostile
+            archive paths out of generated Office/EPUB packages.
+            </remarks>
         </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.FindEpubMimetypeEntry(System.IO.Compression.ZipArchive)">
             <summary>
@@ -3094,9 +3100,11 @@
             Returns whether an archive entry represents a directory.
             </summary>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.GetZipEntryFileName(System.String)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.IsUnsafeZipEntryName(System.String)">
             <summary>
-            Returns the final path component of a normalized ZIP entry name.
+            Returns whether a ZIP entry name is rooted or contains parent-directory
+            traversal. ZIP entry names are archive paths, so validation is performed on
+            the raw name rather than through platform-specific filesystem path parsing.
             </summary>
         </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.ShouldMaskFonts(OpenccNetLib.OfficeFormat,System.String)">
