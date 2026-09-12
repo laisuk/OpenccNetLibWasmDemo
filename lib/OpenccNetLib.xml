@@ -2539,7 +2539,7 @@
             </para>
             <para>
             Use this enumeration with either the <see cref="T:OpenccNetLib.Opencc"/> convenience overloads
-            or the <see cref="T:OpenccNetLib.OfficeTextConverter"/> delegate overloads for strongly typed
+            or the <see cref="T:OpenccNetLib.TextConverter"/> delegate overloads for strongly typed
             format selection.
             </para>
             </remarks>
@@ -2600,28 +2600,6 @@
             Converts an <see cref="T:OpenccNetLib.OfficeFormat"/> value to its canonical lowercase string.
             </summary>
         </member>
-        <member name="T:OpenccNetLib.OfficeTextConverter">
-            <summary>
-            Represents a caller-supplied transformation for text-bearing content inside
-            an Office or EPUB package.
-            </summary>
-            <param name="text">The decoded text fragment selected for conversion.</param>
-            <returns>
-            The transformed text. Implementations must return a non-null string.
-            </returns>
-            <remarks>
-            <para>
-            <see cref="T:OpenccNetLib.OfficeDocConverter"/> owns package parsing, ZIP reconstruction,
-            entry selection, XLSX inline-string handling, EPUB packaging rules, and optional
-            font protection. The delegate owns only the text transformation itself.
-            </para>
-            <para>
-            This allows callers to compose OpenCC conversion with preprocessing or
-            postprocessing steps such as compatibility normalization or DeToFu without
-            coupling the Office/EPUB package layer to those policies.
-            </para>
-            </remarks>
-        </member>
         <member name="T:OpenccNetLib.OfficeDocConverter">
             <summary>
             Provides high-level APIs for converting text-bearing content inside Office and
@@ -2630,7 +2608,7 @@
             <remarks>
             <para>
             Callers may supply either an <see cref="T:OpenccNetLib.Opencc"/> instance through the convenience
-            overloads or an <see cref="T:OpenccNetLib.OfficeTextConverter"/> delegate through the extensible
+            overloads or an <see cref="T:OpenccNetLib.TextConverter"/> delegate through the extensible
             overloads. All overloads share the same ZIP/XML/XHTML conversion core.
             </para>
             <para>
@@ -2682,7 +2660,7 @@
             <see langword="false"/>.
             </returns>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.TextConverter,System.Boolean)">
             <summary>
             Converts an Office or EPUB package in memory by applying a caller-supplied
             text transformation to its convertible content.
@@ -2695,7 +2673,7 @@
             </para>
             <para>
             The complete source and rebuilt package are memory-resident. For large files
-            backed by the filesystem, prefer <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)"/>.
+            backed by the filesystem, prefer <see cref="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.TextConverter,System.Boolean)"/>.
             </para>
             </remarks>
             <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
@@ -2719,7 +2697,7 @@
             supplied text converter fails.
             </exception>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],System.String,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytes(System.Byte[],System.String,OpenccNetLib.TextConverter,System.Boolean)">
             <summary>
             Converts an Office or EPUB package in memory using a caller-supplied text
             transformation and a case-insensitive format name.
@@ -2743,7 +2721,7 @@
             </exception>
             <exception cref="T:System.InvalidOperationException">Thrown when package conversion fails.</exception>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesAsync(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean,System.Threading.CancellationToken)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesAsync(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.TextConverter,System.Boolean,System.Threading.CancellationToken)">
             <summary>
             Asynchronously converts an in-memory Office or EPUB package using a
             caller-supplied text transformation.
@@ -2761,7 +2739,7 @@
             <param name="cancellationToken">Token used to cancel before conversion starts.</param>
             <returns>A task that resolves to the rebuilt package bytes.</returns>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesAsync(System.Byte[],System.String,OpenccNetLib.OfficeTextConverter,System.Boolean,System.Threading.CancellationToken)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesAsync(System.Byte[],System.String,OpenccNetLib.TextConverter,System.Boolean,System.Threading.CancellationToken)">
             <summary>
             Asynchronously converts an in-memory Office or EPUB package using a
             caller-supplied text transformation and a format name.
@@ -2773,7 +2751,7 @@
             <param name="cancellationToken">Token used to cancel before conversion starts.</param>
             <returns>A task that resolves to the rebuilt package bytes.</returns>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.TextConverter,System.Boolean)">
             <summary>
             Converts a filesystem-backed Office or EPUB package using a caller-supplied
             text transformation and writes the rebuilt package to disk.
@@ -2800,7 +2778,7 @@
             <exception cref="T:System.IO.FileNotFoundException">Thrown when the input file does not exist.</exception>
             <exception cref="T:System.InvalidOperationException">Thrown when package conversion fails.</exception>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,System.String,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFile(System.String,System.String,System.String,OpenccNetLib.TextConverter,System.Boolean)">
             <summary>
             Converts a filesystem-backed Office or EPUB package using a caller-supplied
             text transformation and a case-insensitive format name.
@@ -2811,7 +2789,7 @@
             <param name="textConverter">The text transformation applied to convertible content.</param>
             <param name="keepFont">Whether supported font declarations should be preserved.</param>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileAsync(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean,System.Threading.CancellationToken)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileAsync(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.TextConverter,System.Boolean,System.Threading.CancellationToken)">
             <summary>
             Asynchronously converts a filesystem-backed Office or EPUB package using a
             caller-supplied text transformation.
@@ -2828,7 +2806,7 @@
             <param name="cancellationToken">Token used to cancel before conversion starts.</param>
             <returns>A task representing the conversion operation.</returns>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileAsync(System.String,System.String,System.String,OpenccNetLib.OfficeTextConverter,System.Boolean,System.Threading.CancellationToken)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileAsync(System.String,System.String,System.String,OpenccNetLib.TextConverter,System.Boolean,System.Threading.CancellationToken)">
             <summary>
             Asynchronously converts a filesystem-backed Office or EPUB package using a
             caller-supplied text transformation and a format name.
@@ -2955,7 +2933,7 @@
             <param name="cancellationToken">Token used to cancel before conversion starts.</param>
             <returns>A task representing the conversion operation.</returns>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesCore(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeBytesCore(System.Byte[],OpenccNetLib.OfficeFormat,OpenccNetLib.TextConverter,System.Boolean)">
             <summary>
             Core in-memory conversion engine for Office/EPUB ZIP containers.
             </summary>
@@ -2969,7 +2947,7 @@
             <para>
             Only text-bearing XML/XHTML entries selected for the specified
             <see cref="T:OpenccNetLib.OfficeFormat"/> are materialized as strings. Those entries are
-            converted with the supplied <see cref="T:OpenccNetLib.OfficeTextConverter"/>, while all other entries are copied
+            converted with the supplied <see cref="T:OpenccNetLib.TextConverter"/>, while all other entries are copied
             unchanged at the payload level and repackaged into the new container.
             </para>
             <para>
@@ -2994,7 +2972,7 @@
             message, generated package bytes on success, and any captured exception.
             </returns>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileCore(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertOfficeFileCore(System.String,System.String,OpenccNetLib.OfficeFormat,OpenccNetLib.TextConverter,System.Boolean)">
             <summary>
             Converts a filesystem-backed Office/EPUB package using streaming file I/O.
             </summary>
@@ -3019,7 +2997,7 @@
             </para>
             </remarks>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ProcessArchive(System.IO.Compression.ZipArchive,System.IO.Compression.ZipArchive,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ProcessArchive(System.IO.Compression.ZipArchive,System.IO.Compression.ZipArchive,OpenccNetLib.OfficeFormat,OpenccNetLib.TextConverter,System.Boolean)">
             <summary>
             Processes an opened Office/EPUB ZIP package and writes its rebuilt entries to
             the supplied output archive.
@@ -3030,7 +3008,7 @@
             </remarks>
             <returns>The number of text-bearing XML/XHTML entries converted.</returns>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ProcessEntry(System.IO.Compression.ZipArchiveEntry,System.IO.Compression.ZipArchive,OpenccNetLib.OfficeFormat,OpenccNetLib.OfficeTextConverter,System.Boolean,System.Int32@)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ProcessEntry(System.IO.Compression.ZipArchiveEntry,System.IO.Compression.ZipArchive,OpenccNetLib.OfficeFormat,OpenccNetLib.TextConverter,System.Boolean,System.Int32@)">
             <summary>
             Processes one ZIP entry and writes its counterpart to the output package.
             </summary>
@@ -3045,7 +3023,7 @@
             the specified document format.
             </summary>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertTextEntry(System.String,OpenccNetLib.OfficeFormat,System.String,OpenccNetLib.OfficeTextConverter,System.Boolean)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertTextEntry(System.String,OpenccNetLib.OfficeFormat,System.String,OpenccNetLib.TextConverter,System.Boolean)">
             <summary>
             Converts one selected XML/XHTML entry while preserving protected font
             declarations when requested.
@@ -3113,13 +3091,13 @@
             converted package entry.
             </summary>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ApplyTextConverter(OpenccNetLib.OfficeTextConverter,System.String)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ApplyTextConverter(OpenccNetLib.TextConverter,System.String)">
             <summary>
             Applies the caller-supplied text transformation and enforces the non-null
-            return contract of <see cref="T:OpenccNetLib.OfficeTextConverter"/>.
+            return contract of <see cref="T:OpenccNetLib.TextConverter"/>.
             </summary>
         </member>
-        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertXlsxXmlPart(System.String,System.String,OpenccNetLib.OfficeTextConverter)">
+        <member name="M:OpenccNetLib.OfficeDocConverter.ConvertXlsxXmlPart(System.String,System.String,OpenccNetLib.TextConverter)">
             <summary>
             Applies text conversion to an XLSX text-bearing XML part while leaving
             formulas, numeric cells, and non-inline worksheet metadata untouched.
@@ -3288,6 +3266,31 @@
             <exception cref="T:System.ArgumentOutOfRangeException">
             <paramref name="config"/> is not a defined <see cref="T:OpenccNetLib.OpenccConfig"/> value.
             </exception>
+        </member>
+        <member name="T:OpenccNetLib.TextConverter">
+            <summary>
+            Represents a caller-supplied text-to-text transformation.
+            </summary>
+            <param name="text">The input text to transform.</param>
+            <returns>
+            The transformed text. Implementations must return a non-null string.
+            </returns>
+            <remarks>
+            <para>
+            The delegate defines only the text transformation itself. Callers are responsible
+            for deciding which text is passed to it and for any surrounding parsing, extraction,
+            packaging, or output handling.
+            </para>
+            <para>
+            Implementations may perform operations such as OpenCC conversion, compatibility
+            normalization, punctuation conversion, DeToFu processing, or any composition of
+            preprocessing and postprocessing steps.
+            </para>
+            <para>
+            Components such as <see cref="T:OpenccNetLib.OfficeDocConverter"/> can consume this delegate while
+            remaining independent of the specific text-conversion policy supplied by the caller.
+            </para>
+            </remarks>
         </member>
         <member name="T:OpenccNetLib.Opencc">
             <summary>
@@ -4179,6 +4182,23 @@
             A <see cref="T:OpenccNetLib.DictRefs"/> object containing the prepared dictionary references
             and lookup tables for the given configuration.
             </returns>
+        </member>
+        <member name="M:OpenccNetLib.Opencc.ConvertWithPlan(System.String,OpenccNetLib.OpenccConfig,System.Boolean)">
+            <summary>
+            Converts text using the cached conversion plan for the specified configuration
+            and punctuation setting.
+            </summary>
+            <remarks>
+            Centralizes execution of the selected conversion plan and applies this instance's
+            IDS-preservation policy. Dictionary-plan selection remains independent of
+            <see cref="P:OpenccNetLib.Opencc.IsPreserveIds"/>.
+            </remarks>
+            <param name="inputText">The text to convert.</param>
+            <param name="config">The OpenCC configuration whose conversion plan is used.</param>
+            <param name="punctuation">
+            <see langword="true"/> to include punctuation conversion; otherwise, <see langword="false"/>.
+            </param>
+            <returns>The converted text.</returns>
         </member>
         <member name="M:OpenccNetLib.Opencc.S2T(System.String,System.Boolean)">
             <summary>
