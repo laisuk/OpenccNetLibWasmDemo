@@ -272,6 +272,26 @@
             JPS phrases + JPS characters.
             </summary>
         </member>
+        <member name="F:OpenccNetLib.ConversionPlanCache.UnionKey.SealCharactersOnly">
+            <summary>
+            Seal-script character mappings only.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.ConversionPlanCache.UnionKey.SealCharactersRevOnly">
+            <summary>
+            Reverse Seal-script character mappings only.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.ConversionPlanCache.UnionKey.SealVariantsOnly">
+            <summary>
+            Seal-script variant mappings only.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.ConversionPlanCache.UnionKey.SealVariantsRevOnly">
+            <summary>
+            Reverse Seal-script variant mappings only.
+            </summary>
+        </member>
         <member name="F:OpenccNetLib.ConversionPlanCache.UnionKey.StPunctOnly">
             <summary>
             Simplified-style punctuation → Traditional-style punctuation only,
@@ -1257,6 +1277,26 @@
             Japanese Shinjitai-to-Traditional Kyujitai phrase mappings.
             </summary>
         </member>
+        <member name="P:OpenccNetLib.DictionaryMaxlength.seal_characters">
+            <summary>
+            Seal-script-to-Simplified character mappings.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryMaxlength.seal_characters_rev">
+            <summary>
+            Simplified-to-Seal-script character mappings.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryMaxlength.seal_variants">
+            <summary>
+            Seal-script variant mappings.
+            </summary>
+        </member>
+        <member name="P:OpenccNetLib.DictionaryMaxlength.seal_variants_rev">
+            <summary>
+            Reverse Seal-script variant mappings.
+            </summary>
+        </member>
         <member name="P:OpenccNetLib.DictionaryMaxlength.st_punctuations">
             <summary>
             Simplified-to-Traditional punctuation mappings.
@@ -2230,7 +2270,8 @@
         </member>
         <member name="M:OpenccNetLib.DictionaryLib.SaveJsonCompressed(System.String,OpenccNetLib.DictionaryMaxlength)">
             <summary>
-            Serializes the dictionary to JSON, compresses it with Zstd, and saves to a file.
+            Serializes the dictionary to compact unescaped UTF-8 JSON,
+            compresses it with Zstd, and saves it to a file.
             </summary>
             <param name="path">The output file path.</param>
             <param name="dictionary">
@@ -2423,6 +2464,30 @@
         <member name="F:OpenccNetLib.DictSlot.HKPhrasesRev">
             <summary>
             Hong Kong-to-Traditional phrase mappings.
+            Added after existing values to preserve enum numeric stability.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.DictSlot.SealCharacters">
+            <summary>
+            Seal-script-to-Simplified Chinese character mappings.
+            Added after existing values to preserve enum numeric stability.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.DictSlot.SealCharactersRev">
+            <summary>
+            Simplified Chinese-to-Seal-script character mappings.
+            Added after existing values to preserve enum numeric stability.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.DictSlot.SealVariants">
+            <summary>
+            Seal-script variant normalization mappings.
+            Added after existing values to preserve enum numeric stability.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.DictSlot.SealVariantsRev">
+            <summary>
+            Reverse Seal-script variant mappings.
             Added after existing values to preserve enum numeric stability.
             </summary>
         </member>
@@ -3143,136 +3208,9 @@
             does not require copying the package through managed memory.
             </remarks>
         </member>
-        <member name="T:OpenccNetLib.OpenccConfig">
-            <summary>
-            Represents all supported OpenCC conversion configurations.
-            </summary>
-            <remarks>
-            Each configuration defines a directional transformation between
-            Chinese variants (Simplified, Traditional, Taiwan, Hong Kong) 
-            or Japanese Shinjitai/Kyūjitai forms.
-            </remarks>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.S2T">
-            <summary>
-            Simplified Chinese → Traditional Chinese (General Standard).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.T2S">
-            <summary>
-            Traditional Chinese → Simplified Chinese (General Standard).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.S2Tw">
-            <summary>
-            Simplified Chinese → Traditional Chinese (Taiwan Standard).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.Tw2S">
-            <summary>
-            Traditional Chinese (Taiwan Standard) → Simplified Chinese.
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.S2Twp">
-            <summary>
-            Simplified Chinese → Traditional Chinese (Taiwan Standard, with Taiwan idioms).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.Tw2Sp">
-            <summary>
-            Traditional Chinese (Taiwan Standard, with idioms) → Simplified Chinese.
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.S2Hk">
-            <summary>
-            Simplified Chinese → Traditional Chinese (Hong Kong Standard).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.Hk2S">
-            <summary>
-            Traditional Chinese (Hong Kong Standard) → Simplified Chinese.
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.T2Tw">
-            <summary>
-            Traditional Chinese (General Standard) → Traditional Chinese (Taiwan Standard).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.T2Twp">
-            <summary>
-            Traditional Chinese (General Standard) → Traditional Chinese (Taiwan, with idioms).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.Tw2T">
-            <summary>
-            Traditional Chinese (Taiwan Standard) → Traditional Chinese (General Standard).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.Tw2Tp">
-            <summary>
-            Traditional Chinese (Taiwan, with idioms) → Traditional Chinese (General Standard).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.T2Hk">
-            <summary>
-            Traditional Chinese (General Standard) → Traditional Chinese (Hong Kong Standard).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.Hk2T">
-            <summary>
-            Traditional Chinese (Hong Kong Standard) → Traditional Chinese (General Standard).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.T2Jp">
-            <summary>
-            Traditional Japanese Kyujitai → Japanese Shinjitai.
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.Jp2T">
-            <summary>
-            Japanese Shinjitai → Traditional Japanese Kyujitai.
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.S2Hkp">
-            <summary>
-            Simplified Chinese → Traditional Chinese (Hong Kong Standard, with Hong Kong phrases).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.Hk2Sp">
-            <summary>
-            Traditional Chinese (Hong Kong Standard, with phrases) → Simplified Chinese.
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.T2Hkp">
-            <summary>
-            Traditional Chinese (General Standard) → Traditional Chinese (Hong Kong Standard, with Hong Kong phrases).
-            </summary>
-        </member>
-        <member name="F:OpenccNetLib.OpenccConfig.Hk2Tp">
-            <summary>
-            Traditional Chinese (Hong Kong Standard, with phrases) → Traditional Chinese (General Standard).
-            </summary>
-        </member>
-        <member name="T:OpenccNetLib.OpenccConfigExtensions">
-            <summary>
-            Provides helpers for converting <see cref="T:OpenccNetLib.OpenccConfig"/> values to their
-            canonical lowercase OpenCC configuration names.
-            </summary>
-        </member>
-        <member name="M:OpenccNetLib.OpenccConfigExtensions.ToCanonicalName(OpenccNetLib.OpenccConfig)">
-            <summary>
-            Converts an <see cref="T:OpenccNetLib.OpenccConfig"/> value to its canonical OpenCC configuration name
-            (for example, <c>"s2t"</c> or <c>"s2twp"</c>).
-            </summary>
-            <param name="config">The OpenCC configuration to convert.</param>
-            <returns>The canonical lowercase configuration name.</returns>
-            <exception cref="T:System.ArgumentOutOfRangeException">
-            <paramref name="config"/> is not a defined <see cref="T:OpenccNetLib.OpenccConfig"/> value.
-            </exception>
-        </member>
         <member name="T:OpenccNetLib.TextConverter">
             <summary>
-            Represents a caller-supplied text-to-text transformation.
+            Represents a caller-supplied `text-to-text` transformation.
             </summary>
             <param name="text">The input text to transform.</param>
             <returns>
@@ -3290,7 +3228,7 @@
             preprocessing and postprocessing steps.
             </para>
             <para>
-            Components such as <see cref="T:OpenccNetLib.OfficeDocConverter"/> can consume this delegate while
+            Components such as <see cref="T:OpenccNetLib.OfficeDocConverter" /> can consume this delegate while
             remaining independent of the specific text-conversion policy supplied by the caller.
             </para>
             </remarks>
@@ -4369,6 +4307,38 @@
             <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
             <returns>The converted text.</returns>
         </member>
+        <member name="M:OpenccNetLib.Opencc.S2Seal(System.String,System.Boolean)">
+            <summary>
+            Converts Simplified Chinese to Small Seal Script.
+            </summary>
+            <param name="inputText">The input text.</param>
+            <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
+            <returns>The converted text.</returns>
+        </member>
+        <member name="M:OpenccNetLib.Opencc.T2Seal(System.String,System.Boolean)">
+            <summary>
+            Converts Traditional Chinese to Small Seal Script.
+            </summary>
+            <param name="inputText">The input text.</param>
+            <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
+            <returns>The converted text.</returns>
+        </member>
+        <member name="M:OpenccNetLib.Opencc.Seal2S(System.String,System.Boolean)">
+            <summary>
+            Converts Small Seal Script to Simplified Chinese.
+            </summary>
+            <param name="inputText">The input text.</param>
+            <param name="punctuation">Whether to apply Simplified-style punctuation conversion.</param>
+            <returns>The converted text.</returns>
+        </member>
+        <member name="M:OpenccNetLib.Opencc.Seal2T(System.String,System.Boolean)">
+            <summary>
+            Converts Small Seal Script to Traditional Chinese.
+            </summary>
+            <param name="inputText">The input text.</param>
+            <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
+            <returns>The converted text.</returns>
+        </member>
         <member name="M:OpenccNetLib.Opencc.Convert(System.String,System.Boolean)">
             <summary>
             Converts text according to the current <see cref="P:OpenccNetLib.Opencc.Config"/> setting.
@@ -4612,6 +4582,153 @@
             <returns>Text with mapped tofu-risk characters replaced and unmapped characters preserved.</returns>
             <exception cref="T:System.ArgumentNullException">
             <paramref name="pairs"/> is <see langword="null"/>.
+            </exception>
+        </member>
+        <member name="T:OpenccNetLib.OpenccConfig">
+            <summary>
+            Represents all supported OpenCC conversion configurations.
+            </summary>
+            <remarks>
+            Each configuration defines a directional transformation between
+            Chinese variants (Simplified, Traditional, Taiwan, Hong Kong),
+            Seal script, or Japanese Shinjitai/Kyūjitai forms.
+            </remarks>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.S2T">
+            <summary>
+            Simplified Chinese → Traditional Chinese (General Standard).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.T2S">
+            <summary>
+            Traditional Chinese → Simplified Chinese (General Standard).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.S2Tw">
+            <summary>
+            Simplified Chinese → Traditional Chinese (Taiwan Standard).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Tw2S">
+            <summary>
+            Traditional Chinese (Taiwan Standard) → Simplified Chinese.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.S2Twp">
+            <summary>
+            Simplified Chinese → Traditional Chinese (Taiwan Standard, with Taiwan idioms).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Tw2Sp">
+            <summary>
+            Traditional Chinese (Taiwan Standard, with idioms) → Simplified Chinese.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.S2Hk">
+            <summary>
+            Simplified Chinese → Traditional Chinese (Hong Kong Standard).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Hk2S">
+            <summary>
+            Traditional Chinese (Hong Kong Standard) → Simplified Chinese.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.T2Tw">
+            <summary>
+            Traditional Chinese (General Standard) → Traditional Chinese (Taiwan Standard).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.T2Twp">
+            <summary>
+            Traditional Chinese (General Standard) → Traditional Chinese (Taiwan, with idioms).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Tw2T">
+            <summary>
+            Traditional Chinese (Taiwan Standard) → Traditional Chinese (General Standard).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Tw2Tp">
+            <summary>
+            Traditional Chinese (Taiwan, with idioms) → Traditional Chinese (General Standard).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.T2Hk">
+            <summary>
+            Traditional Chinese (General Standard) → Traditional Chinese (Hong Kong Standard).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Hk2T">
+            <summary>
+            Traditional Chinese (Hong Kong Standard) → Traditional Chinese (General Standard).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.T2Jp">
+            <summary>
+            Traditional Japanese Kyujitai → Japanese Shinjitai.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Jp2T">
+            <summary>
+            Japanese Shinjitai → Traditional Japanese Kyujitai.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.S2Hkp">
+            <summary>
+            Simplified Chinese → Traditional Chinese (Hong Kong Standard, with Hong Kong phrases).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Hk2Sp">
+            <summary>
+            Traditional Chinese (Hong Kong Standard, with phrases) → Simplified Chinese.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.T2Hkp">
+            <summary>
+            Traditional Chinese (General Standard) → Traditional Chinese (Hong Kong Standard, with Hong Kong phrases).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Hk2Tp">
+            <summary>
+            Traditional Chinese (Hong Kong Standard, with phrases) → Traditional Chinese (General Standard).
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.S2Seal">
+            <summary>
+            Simplified Chinese → Seal script.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.T2Seal">
+            <summary>
+            Traditional Chinese → Seal script.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Seal2S">
+            <summary>
+            Seal script → Simplified Chinese.
+            </summary>
+        </member>
+        <member name="F:OpenccNetLib.OpenccConfig.Seal2T">
+            <summary>
+            Seal script → Traditional Chinese.
+            </summary>
+        </member>
+        <member name="T:OpenccNetLib.OpenccConfigExtensions">
+            <summary>
+            Provides helpers for converting <see cref="T:OpenccNetLib.OpenccConfig"/> values to their
+            canonical lowercase OpenCC configuration names.
+            </summary>
+        </member>
+        <member name="M:OpenccNetLib.OpenccConfigExtensions.ToCanonicalName(OpenccNetLib.OpenccConfig)">
+            <summary>
+            Converts an <see cref="T:OpenccNetLib.OpenccConfig"/> value to its canonical OpenCC configuration name
+            (for example, <c>"s2t"</c>, <c>"s2twp"</c>, or <c>"s2seal"</c>).
+            </summary>
+            <param name="config">The OpenCC configuration to convert.</param>
+            <returns>The canonical lowercase configuration name.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">
+            <paramref name="config"/> is not a defined <see cref="T:OpenccNetLib.OpenccConfig"/> value.
             </exception>
         </member>
         <member name="T:OpenccNetLib.StarterUnion">
