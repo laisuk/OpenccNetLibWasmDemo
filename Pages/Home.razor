@@ -472,6 +472,8 @@
             _openedTextFileName = file.Name;
             _openedTextFileBytes = await ReadAllBytesAsync(file);
 
+            _textEncoding = DetectTextEncoding(_openedTextFileBytes);
+
             await RefreshOpenedTextFileAsync();
         }
         catch (Exception ex)
@@ -479,6 +481,32 @@
             ClearOpenedTextFile();
             _status = $"Failed to open file: {ex.Message}";
         }
+    }
+
+    private static string DetectTextEncoding(byte[] bytes)
+    {
+        var result = CjkEncodingDetector.Detect(bytes);
+
+        return result.Encoding switch
+        {
+            CjkEncodingDetector.EncodingKind.Utf16Le or
+                CjkEncodingDetector.EncodingKind.Utf16LeBom
+                => "utf-16le",
+
+            CjkEncodingDetector.EncodingKind.Utf16Be or
+                CjkEncodingDetector.EncodingKind.Utf16BeBom
+                => "utf-16be",
+
+            CjkEncodingDetector.EncodingKind.Big5
+                => "big5",
+
+            CjkEncodingDetector.EncodingKind.Gb18030
+                => "gb18030",
+
+            // ASCII, UTF-8, UTF-8 BOM and Unknown:
+            // UTF-8 is the safest default.
+            _ => "utf-8"
+        };
     }
 
     private async Task OnEncodingChangedAsync(ChangeEventArgs e)
