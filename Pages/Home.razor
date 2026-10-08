@@ -58,7 +58,8 @@
 <div class="row file-row">
     <label class="button-like">
         Open File
-        <InputFile class="hidden-file-input"
+        <InputFile id="text-file-input"
+                   class="hidden-file-input"
                    OnChange="OpenTextFileAsync"
                    accept=".txt,.md"/>
     </label>
@@ -267,6 +268,8 @@
         try
         {
             await Js.InvokeVoidAsync("openccDemo.pasteToInput");
+            await Js.InvokeVoidAsync("openccDemo.resetTextFileInput");
+            _textEncoding = "utf-8";
             _status = "Pasted clipboard text into input.";
         }
         catch (Exception ex)
@@ -369,8 +372,10 @@
         ClearOpenedTextFile();
 
         await Js.InvokeVoidAsync("openccDemo.clearInput");
-        await Js.InvokeVoidAsync("openccDemo.focusInput");
+        await Js.InvokeVoidAsync("openccDemo.resetTextFileInput");
+        // await Js.InvokeVoidAsync("openccDemo.focusInput");
 
+        _textEncoding = "utf-8";
         _status = "Input cleared.";
     }
 
@@ -502,6 +507,9 @@
 
             CjkEncodingDetector.EncodingKind.Gb18030
                 => "gb18030",
+
+            CjkEncodingDetector.EncodingKind.ShiftJis
+                => "shift_jis",
 
             // ASCII, UTF-8, UTF-8 BOM and Unknown:
             // UTF-8 is the safest default.

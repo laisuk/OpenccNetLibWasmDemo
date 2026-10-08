@@ -189,6 +189,13 @@ window.openccDemo = (() => {
             setEditorText(requireEditor(editorLeft, "Input editor"), "");
         },
 
+        resetTextFileInput: function () {
+            const input = document.getElementById("text-file-input");
+            if (input) {
+                input.value = "";
+            }
+        },
+
         clearOutput: function () {
             setEditorText(
                 requireEditor(editorRight, "Output editor"),
