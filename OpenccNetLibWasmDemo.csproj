@@ -13,6 +13,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Local console tooling must never enter the browser build or publish output. -->
+        <Compile Remove="cli/**" />
+        <Content Remove="cli/**" />
+        <None Remove="cli/**" />
+    </ItemGroup>
+
+    <ItemGroup>
         <!--
           Reference the local OpenccNetLib build directly so CI and the WASM demo
           use the exact library binary committed with this repository.
