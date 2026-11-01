@@ -3097,6 +3097,9 @@
             declarations when requested.
             </summary>
         </member>
+        <member name="M:OpenccNetLib.OfficeDocConverter.RestoreFonts(System.String,System.Collections.Generic.Dictionary{System.String,System.String})">
+            <summary>Restores font markers without rescanning inserted font names.</summary>
+        </member>
         <member name="M:OpenccNetLib.OfficeDocConverter.GetFontMaskPattern(OpenccNetLib.OfficeFormat)">
             <summary>
             Returns the format-specific regular expression used to protect font
