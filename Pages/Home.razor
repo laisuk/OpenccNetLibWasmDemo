@@ -27,7 +27,11 @@
 
 <div class="editor-grid">
     <div>
-        <h3>Input</h3>
+        <h3>Input
+            <span id="inputCount" class="char-count">
+                (0 characters)
+            </span>
+        </h3>
         <div class="toolbar">
             <button @onclick="PasteAsync">Paste</button>
             <button @onclick="NormalizeAsync">Normalize</button>
@@ -37,7 +41,11 @@
     </div>
 
     <div>
-        <h3>Output</h3>
+        <h3>Output
+            <span id="outputCount" class="char-count">
+                (0 characters)
+            </span>
+        </h3>
         <div class="toolbar">
             <button @onclick="CopyAsync">Copy</button>
             <button @onclick="DeTofuAsync">DeTofu</button>

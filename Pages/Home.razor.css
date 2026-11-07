@@ -43,6 +43,14 @@ select,
     min-height: 100%;
 }
 
+.char-count {
+    margin-left: 6px;
+    font-size: 0.8em;
+    font-weight: normal;
+    color: #888;
+    white-space: nowrap;
+}
+
 .button-like {
     display: inline-block;
     border: 1px solid buttonborder;

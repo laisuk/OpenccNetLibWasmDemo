@@ -68,7 +68,16 @@ window.openccDemo = (() => {
 
         addToHistoryAnnotation = Transaction.addToHistory;
 
-        function createEditor(parent, text, readOnly, onDocChanged = null) {
+        function createEditor(
+            parent,
+            text,
+            readOnly,
+            onDocChanged = null,
+            countElementId = null,
+            debounceMs = 0
+        ) {
+            let countTimer = null;
+
             const extensions = [
                 lineNumbers(),
                 history(),
@@ -81,23 +90,48 @@ window.openccDemo = (() => {
                 EditorState.readOnly.of(readOnly)
             ];
 
-            if (onDocChanged) {
+            if (onDocChanged || countElementId) {
                 extensions.push(
                     EditorView.updateListener.of(update => {
-                        if (update.docChanged) {
-                            onDocChanged();
+                        if (!update.docChanged) return;
+
+                        if (countElementId) {
+                            const refreshCount = () => {
+                                updateCharacterCount(
+                                    countElementId,
+                                    update.view.state.doc
+                                );
+                            };
+
+                            if (debounceMs > 0) {
+                                clearTimeout(countTimer);
+                                countTimer = setTimeout(
+                                    refreshCount,
+                                    debounceMs
+                                );
+                            } else {
+                                refreshCount();
+                            }
                         }
+
+                        onDocChanged?.();
                     })
                 );
             }
 
-            return new EditorView({
+            const editor = new EditorView({
                 parent,
                 state: EditorState.create({
                     doc: text ?? "",
                     extensions
                 })
             });
+
+            if (countElementId) {
+                updateCharacterCount(countElementId, editor.state.doc);
+            }
+
+            return editor;
         }
 
         const leftHost = document.getElementById(leftId);
@@ -115,12 +149,17 @@ window.openccDemo = (() => {
                 if (openedTextChangedCallback) {
                     openedTextChangedCallback();
                 }
-            });
+            },
+            "inputCount",
+            150
+        );
 
         editorRight = createEditor(
             rightHost,
             preservedOutputText ?? "",
-            true
+            true,
+            null,
+            "outputCount"
         );
 
     }
@@ -146,6 +185,27 @@ window.openccDemo = (() => {
             },
             annotations: addToHistoryAnnotation.of(addToHistory)
         });
+    }
+
+    function countUnicodeCharacters(doc) {
+        let count = 0;
+
+        for (const line of doc.iterLines()) {
+            for (const _ of line) {
+                count++;
+            }
+            count++; // Line separator
+        }
+
+        return count > 0 ? count - 1 : 0;
+    }
+
+    function updateCharacterCount(elementId, doc) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        const count = countUnicodeCharacters(doc);
+        element.textContent = `(${count.toLocaleString()} characters)`;
     }
 
     return {
