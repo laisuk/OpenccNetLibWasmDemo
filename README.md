@@ -218,3 +218,45 @@ Load the demo interop script before `</body>`:
 ## OpenccNetLib
 
 This repository is a live browser demo for OpenccNetLib. The library itself is distributed separately through NuGet.
+
+### Theme, text encoding and custom dictionaries
+
+The Theme selector supports System (default), Light and Dark using Bootstrap 5.3 color modes.
+Only the theme preference is stored in localStorage. System mode follows OS changes without
+recreating CodeMirror editors. `wwwroot/theme.js` runs before stylesheets to apply the initial mode.
+
+The document drop zone automatically detects TXT/MD encodings by default using the existing
+`CjkEncodingDetector.cs` (the same detector from which the Rust demo's JavaScript module was
+ported). Disable the checkbox to use the Encoding selector. Inconclusive detection requests
+manual selection rather than assuming UTF-8. Decoding rejects malformed input. TXT/MD results
+are UTF-8; Office/EPUB processing retains its existing pipeline. Open File retains undecoded
+bytes when detection is inconclusive so changing Encoding can recover the text.
+
+Custom dictionary cards contain exact source TAB target entries. Blank and # comment lines
+are ignored; one initial BOM is accepted. Spaces and additional tabs are preserved, unlike the
+Rust demo's trimmed entries, because OpenccNetLib's Pairs API uses exact strings. Repeated
+source keys use the last entry. Empty dictionaries, missing separators, empty source/target,
+inactive slots and duplicate slots are rejected with card/line context where applicable.
+Append merges a slot; Override replaces its entire contents. Only supported active slots are
+listed. All entries stay in memory and are passed exclusively through `CustomDictSpec.Pairs`.
+Apply constructs a candidate from the base converter before replacing the active converter.
+Reset restores the base and retains draft cards. Both operations preserve config and IDS
+settings; punctuation stays a separate per-conversion option. No dictionary settings or entries
+are automatically persisted. Text and Office/EPUB conversion share the active converter.
+
+Focused checks (no additional test packages required):
+
+```powershell
+dotnet build
+dotnet run --project tests/Regression.csproj
+node tests/theme.mjs
+node --check wwwroot/demoInterop.js
+dotnet build cli/OpenccNetCli.csproj -c Release
+python cli/smoke_test.py
+```
+
+The focused runner covers parsing, exact whitespace, validation failure retaining the active
+converter, Append/Override, config switching, reset, custom DOCX conversion, supported legacy
+CJK detection, Unicode BOMs, manual decoding and inconclusive/malformed input. Theme checks
+exercise initialization, system changes, stored preferences and unavailable storage. Real
+browser/iPhone Safari layout, clipboard and download behavior require a browser smoke check.

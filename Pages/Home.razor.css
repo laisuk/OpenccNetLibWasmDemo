@@ -26,7 +26,7 @@ select,
 }
 
 .editor-box {
-    border: 1px solid #ccc;
+    border: 1px solid var(--bs-border-color);
 }
 
 .editor-box ::deep .cm-editor {
@@ -47,16 +47,16 @@ select,
     margin-left: 6px;
     font-size: 0.8em;
     font-weight: normal;
-    color: #888;
+    color: var(--bs-secondary-color);
     white-space: nowrap;
 }
 
 .button-like {
     display: inline-block;
-    border: 1px solid buttonborder;
+    border: 1px solid var(--bs-border-color);
     border-radius: 2px;
-    background: buttonface;
-    color: buttontext;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
     cursor: pointer;
     user-select: none;
 }
@@ -69,7 +69,7 @@ select,
     position: relative;
     margin-top: 16px;
     padding: 24px;
-    border: 2px dashed #aaa;
+    border: 2px dashed var(--bs-border-color);
     border-radius: 8px;
     text-align: center;
     cursor: pointer;
@@ -78,7 +78,7 @@ select,
 }
 
 .office-drop:hover {
-    border-color: #555;
+    border-color: var(--bs-emphasis-color);
     background: rgba(127, 127, 127, 0.06);
 }
 
@@ -102,24 +102,116 @@ select,
 }
 
 .status {
-    background: #f3f3f3;
+    background: var(--bs-tertiary-bg);
     padding: 12px;
     white-space: pre-wrap;
-}
-
-@media (prefers-color-scheme: dark) {
-    .editor-box {
-        border-color: #555;
-    }
-
-    .status {
-        background: #222;
-        color: #ddd;
-    }
 }
 
 @media (max-width: 900px) {
     .editor-grid {
         grid-template-columns: 1fr;
     }
+}
+
+.dictionary-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: var(--bs-tertiary-bg);
+}
+
+.dictionary-card textarea {
+    display: block;
+    width: 100%;
+    min-height: 140px;
+    margin: 8px 0;
+    font-family: monospace;
+}
+
+.dictionaries {
+    margin-top: 24px;
+}
+
+.editor-grid > div {
+    min-width: 0;
+}
+
+select, textarea {
+    color: var(--bs-body-color);
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
+}
+
+textarea {
+    font-size: 16px;
+}
+
+.status {
+    color: var(--bs-body-color);
+    overflow-wrap: anywhere;
+}
+
+.row {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.row > * {
+    width: auto;
+}
+
+/* Interactive buttons */
+button,
+.button-like {
+    transition: background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+    cursor: pointer;
+}
+
+/* Light mode */
+:root:not([data-bs-theme="dark"]) button,
+:root:not([data-bs-theme="dark"]) .button-like {
+    background-color: #e2e6ea;
+    border-color: #adb5bd;
+}
+
+:root:not([data-bs-theme="dark"]) button:not(:disabled):hover,
+:root:not([data-bs-theme="dark"]) .button-like:hover {
+    background-color: #cbd3da;
+    border-color: #868e96;
+}
+
+/* Dark mode */
+[data-bs-theme="dark"] button,
+[data-bs-theme="dark"] .button-like {
+    background-color: #343a40;
+    border-color: #6c757d;
+}
+
+[data-bs-theme="dark"] button:not(:disabled):hover,
+[data-bs-theme="dark"] .button-like:hover {
+    background-color: #495057;
+    border-color: #adb5bd;
+}
+
+/* Active */
+button:not(:disabled):active,
+.button-like:active {
+    filter: brightness(0.92);
+}
+
+/* Keyboard focus */
+button:focus-visible,
+.button-like:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+/* Disabled */
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

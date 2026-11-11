@@ -15,6 +15,9 @@
     <ItemGroup>
         <!-- Local console tooling must never enter the browser build or publish output. -->
         <Compile Remove="cli/**" />
+        <Compile Remove="tests/**" />
+        <Content Remove="tests/**" />
+        <None Remove="tests/**" />
         <Content Remove="cli/**" />
         <None Remove="cli/**" />
     </ItemGroup>

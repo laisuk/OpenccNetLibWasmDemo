@@ -10,6 +10,15 @@
 <h1>OpenccNetLib — CJK Conversion Tool</h1>
 
 <div class="row config-row">
+    <label for="theme">Theme:</label>
+    <select id="theme" value="@_theme" @onchange="OnThemeChangedAsync">
+        <option value="system">System</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+    </select>
+</div>
+
+<div class="row config-row">
     <label for="config">Config:</label>
     <select id="config" value="@_config" @onchange="OnConfigChanged">
         @foreach (var config in _configs)
@@ -87,6 +96,10 @@
     <button @onclick="ConvertTextAsync">Convert</button>
 </div>
 
+<div class="row">
+    <label><input type="checkbox" @bind="_autoDetectDropEncoding"/> Auto-detect TXT/MD encoding in Drop Zone</label>
+</div>
+
 <div id="office-drop" class="office-drop">
     @if (!string.IsNullOrEmpty(_officeInputName))
     {
@@ -101,7 +114,8 @@
         DOCX, XLSX, PPTX, EPUB, TXT, MD — converted locally in your browser; nothing is uploaded
     </small>
     <small>
-        TXT/MD uses the selected encoding; Office documents and EPUB handle text encoding internally.
+        TXT/MD auto-detects encoding when enabled; otherwise uses the selected encoding; Office documents and EPUB
+        handle text encoding internally.
     </small>
 
     <InputFile id="office-file-input" class="office-file-input"
@@ -116,6 +130,47 @@
         <button @onclick="DownloadOfficeAsync">Download converted file</button>
     </div>
 }
+
+<section class="dictionaries" aria-labelledby="dictionary-heading">
+    <h3 id="dictionary-heading">Custom dictionaries</h3>
+    <p id="dictionary-help">One source TAB target per line. Blank lines and # comments are ignored. Whitespace is
+        preserved. Draft changes take effect only after Apply.</p>
+    @foreach (var draft in _dictionaryDrafts)
+    {
+        <div class="dictionary-card" @key="draft.Id">
+            <div class="toolbar">
+                <strong>Dictionary @(_dictionaryDrafts.IndexOf(draft) + 1)</strong>
+                <label>Slot <select @bind="draft.Slot">
+                        @foreach (var slot in DictSlotExtensions.ActiveSlots)
+                        {
+                            <option value="@slot">@slot</option>
+                        }
+                    </select></label>
+                <label>Mode <select @bind="draft.Mode">
+                        <option value="@CustomDictMode.Append">Append</option>
+                        <option value="@CustomDictMode.Override">Override</option>
+                    </select></label>
+                <button @onclick="() => _dictionaryDrafts.Remove(draft)">Remove</button>
+            </div>
+            <label for="@draft.Id">Entries</label>
+            <textarea id="@draft.Id"
+                      @bind="draft.Entries"
+                      @bind:event="oninput"
+                      aria-describedby="dictionary-help"
+                      spellcheck="false"
+                      placeholder="@("source\ttarget")"></textarea>
+            <button @onpointerdown:preventDefault @onclick="() => InsertDictionaryTabAsync(draft)">Insert Tab at
+                cursor
+            </button>
+        </div>
+    }
+    <div class="toolbar">
+        <button @onclick="AddDictionary">Add New Custom Dictionary</button>
+        <button @onclick="ApplyDictionaries">Apply Dictionaries</button>
+        <button @onclick="ResetDictionaries">Reset to Default</button>
+    </div>
+    <p role="status">Active: @(_dictionaries?.ActiveCount ?? 0) custom dictionaries. @_dictionaryStatus</p>
+</section>
 
 <h3>Status</h3>
 <pre class="status">@_status</pre>
@@ -151,7 +206,46 @@
             ["jp2t"] = "Japanese Shinjitai → Traditional Chinese"
         };
 
-    private Opencc _cc = null!;
+    private DictionarySession _dictionaries = null!;
+    private Opencc _cc => _dictionaries.ActiveConverter;
+    private readonly List<DictionaryDraft> _dictionaryDrafts = [];
+    private string _dictionaryStatus = "Default dictionaries active.";
+    private string _theme = "system";
+    private bool _autoDetectDropEncoding = true;
+
+    private void AddDictionary() => _dictionaryDrafts.Add(new DictionaryDraft
+    {
+        Slot = DictSlotExtensions.ActiveSlots.FirstOrDefault(slot => _dictionaryDrafts.All(d => d.Slot != slot), DictSlot.STPhrases)
+    });
+
+    private void ApplyDictionaries()
+    {
+        try
+        {
+            _dictionaries.Apply(_dictionaryDrafts);
+            _dictionaryStatus = "Applied successfully. Draft edits require Apply.";
+        }
+        catch (Exception ex)
+        {
+            _dictionaryStatus = $"Apply failed; previous dictionaries retained. {ex.Message}";
+        }
+    }
+
+    private void ResetDictionaries()
+    {
+        _dictionaries.Reset();
+        _dictionaryStatus = "Default dictionaries restored. Draft cards retained.";
+    }
+
+    private async Task InsertDictionaryTabAsync(DictionaryDraft draft) =>
+        draft.Entries = await Js.InvokeAsync<string>("openccDemo.insertDictionaryTab", draft.Id);
+
+    private async Task OnThemeChangedAsync(ChangeEventArgs e)
+    {
+        _theme = e.Value?.ToString() ?? "system";
+        await Js.InvokeVoidAsync("openccTheme.set", _theme);
+    }
+
     private DotNetObjectReference<Home>? _selfReference;
 
     private string _config = "s2t";
@@ -189,7 +283,7 @@
         try
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            _cc = new Opencc(_config);
+            _dictionaries = new DictionarySession(new Opencc(_config));
 
             var version = typeof(Opencc).Assembly
                 .GetName()
@@ -210,6 +304,8 @@
         if (!firstRender)
             return;
 
+        _theme = await Js.InvokeAsync<string>("openccTheme.get");
+        StateHasChanged();
         _selfReference = DotNetObjectReference.Create(this);
 
         await Js.InvokeVoidAsync(
@@ -458,22 +554,29 @@
         if (!_editorsReady)
             return;
 
-        var text =
-            await Js.InvokeAsync<string>("openccDemo.getOutputText");
-
-        if (string.IsNullOrEmpty(text))
+        try
         {
-            _status = "Download: output is empty.";
-            return;
+            var text =
+                await Js.InvokeAsync<string>("openccDemo.getOutputText");
+
+            if (string.IsNullOrEmpty(text))
+            {
+                _status = "Download: output is empty.";
+                return;
+            }
+
+            var bytes = Encoding.UTF8.GetBytes(text);
+
+            await Js.InvokeVoidAsync(
+                "openccDemo.downloadBytes",
+                "opencc_output.txt",
+                "text/plain;charset=utf-8",
+                bytes);
         }
-
-        var bytes = Encoding.UTF8.GetBytes(text);
-
-        await Js.InvokeVoidAsync(
-            "openccDemo.downloadBytes",
-            "opencc_output.txt",
-            "text/plain;charset=utf-8",
-            bytes);
+        catch (Exception ex)
+        {
+            _status = $"Download failed: {ex.Message}";
+        }
     }
 
     private async Task OpenTextFileAsync(InputFileChangeEventArgs e)
@@ -485,7 +588,15 @@
             _openedTextFileName = file.Name;
             _openedTextFileBytes = await ReadAllBytesAsync(file);
 
-            _textEncoding = DetectTextEncoding(_openedTextFileBytes);
+            try
+            {
+                _textEncoding = TextFileEncoding.Detect(_openedTextFileBytes);
+            }
+            catch (InvalidOperationException)
+            {
+                _status = "Unable to detect text encoding. Select an encoding manually to decode the opened file.";
+                return;
+            }
 
             await RefreshOpenedTextFileAsync();
         }
@@ -494,35 +605,6 @@
             ClearOpenedTextFile();
             _status = $"Failed to open file: {ex.Message}";
         }
-    }
-
-    private static string DetectTextEncoding(byte[] bytes)
-    {
-        var result = CjkEncodingDetector.Detect(bytes);
-
-        return result.Encoding switch
-        {
-            CjkEncodingDetector.EncodingKind.Utf16Le or
-                CjkEncodingDetector.EncodingKind.Utf16LeBom
-                => "utf-16le",
-
-            CjkEncodingDetector.EncodingKind.Utf16Be or
-                CjkEncodingDetector.EncodingKind.Utf16BeBom
-                => "utf-16be",
-
-            CjkEncodingDetector.EncodingKind.Big5
-                => "big5",
-
-            CjkEncodingDetector.EncodingKind.Gb18030
-                => "gb18030",
-
-            CjkEncodingDetector.EncodingKind.ShiftJis
-                => "shift_jis",
-
-            // ASCII, UTF-8, UTF-8 BOM and Unknown:
-            // UTF-8 is the safest default.
-            _ => "utf-8"
-        };
     }
 
     private async Task OnEncodingChangedAsync(ChangeEventArgs e)
@@ -540,7 +622,7 @@
 
         try
         {
-            var encoding = ResolveEncoding(_textEncoding);
+            var encoding = TextFileEncoding.Resolve(_textEncoding);
             var text = encoding.GetString(_openedTextFileBytes);
 
             await SetInputTextAsync(
@@ -610,11 +692,12 @@
             var stopwatch = Stopwatch.StartNew();
 
             byte[] outputBytes;
+            string? inputEncoding = null;
 
             if (format is "txt" or "md")
             {
-                var text =
-                    ResolveEncoding(_textEncoding).GetString(inputBytes);
+                inputEncoding = _autoDetectDropEncoding ? TextFileEncoding.Detect(inputBytes) : _textEncoding;
+                var text = TextFileEncoding.Decode(inputBytes, false, inputEncoding);
 
                 var converted =
                     _cc.Convert(text, _punctuation);
@@ -643,6 +726,7 @@
                 $"Document conversion completed.\n" +
                 $"Config: {_cc.GetConfig()}\n" +
                 $"Punctuation: {(_punctuation ? "enabled" : "disabled")}\n" +
+                (inputEncoding is null ? "" : $"Text encoding: {inputEncoding} ({(_autoDetectDropEncoding ? "auto-detected" : "manual")})\n") +
                 $"Input: {file.Name}\n" +
                 $"Output: {_officeOutputName}\n" +
                 $"Conversion time: {stopwatch.Elapsed.TotalMilliseconds:F2} ms\n" +
@@ -672,8 +756,14 @@
             return;
         }
 
-        await Js.InvokeVoidAsync(
-            "openccDemo.downloadPreservedOfficeResult");
+        try
+        {
+            await Js.InvokeVoidAsync("openccDemo.downloadPreservedOfficeResult");
+        }
+        catch (Exception ex)
+        {
+            _status = $"Download failed: {ex.Message}";
+        }
     }
 
     private void ClearOfficeResult()
@@ -704,21 +794,6 @@
 
         await stream.CopyToAsync(memory);
         return memory.ToArray();
-    }
-
-    private static Encoding ResolveEncoding(string name)
-    {
-        return name.ToLowerInvariant() switch
-        {
-            "utf-8" => new UTF8Encoding(false),
-            "utf-16le" => new UnicodeEncoding(false, false),
-            "utf-16be" => new UnicodeEncoding(true, false),
-            "gb18030" => Encoding.GetEncoding("GB18030"),
-            "big5" => Encoding.GetEncoding("Big5"),
-            "shift_jis" => Encoding.GetEncoding("shift_jis"),
-            _ => throw new ArgumentException(
-                $"Unsupported encoding: {name}")
-        };
     }
 
     private static string EncodingDisplayName(string name)
@@ -790,6 +865,7 @@
                 "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "epub" => "application/epub+zip",
             "txt" => "text/plain;charset=utf-8",
+            "md" => "text/markdown;charset=utf-8",
             _ => "application/octet-stream"
         };
     }

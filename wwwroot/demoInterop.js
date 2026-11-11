@@ -209,6 +209,16 @@ window.openccDemo = (() => {
     }
 
     return {
+        insertDictionaryTab(id) {
+            const textarea = document.getElementById(id);
+            if (!textarea) throw new Error("Dictionary entries field not found.");
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.focus({preventScroll: true});
+            textarea.setRangeText("\t", start, end, "end");
+            textarea.dispatchEvent(new Event("input", {bubbles: true}));
+            return textarea.value;
+        },
         initializeEditors,
 
         setInputChangedCallback: function (dotNetRef, methodName) {
