@@ -7,14 +7,14 @@ compatibility normalization, and local document conversion for DOCX, XLSX, PPTX,
 
 **Nothing is uploaded.** Text and documents are processed locally in your browser.
 
-## Live Demo
+## **Live Demo**
 
 **https://laisuk.github.io/OpenccNetLibWasmDemo/**
 
 > The public demo is published as a WebAssembly AOT build for
 > substantially better conversion performance.
 
-## Features
+## **Features**
 
 - OpenccNetLib Simplified/Traditional Chinese conversion
 - All supported OpenccNetLib conversion configurations
@@ -23,8 +23,14 @@ compatibility normalization, and local document conversion for DOCX, XLSX, PPTX,
 - Extended Unicode compatibility normalization
 - CJK language detection
 - Large-text editing with CodeMirror
-- Local text-file decoding with selectable encodings
-- DOCX, XLSX, PPTX, EPUB, and TXT conversion
+- Responsive interface with System, Light, and Dark themes
+- In-memory custom dictionaries with Append and Override modes
+- Multiple custom dictionary cards with selectable dictionary slots
+- TAB-separated dictionary entries with cursor-aware Tab insertion
+- Custom dictionary validation with transactional Apply and Reset
+- Automatic TXT/MD encoding detection with manual encoding selection
+- Raw text-file byte preservation for encoding recovery
+- DOCX, XLSX, PPTX, EPUB, TXT, and MD conversion
 - Converted document download
 - Browser-local processing with no server upload
 - Static-site compatible
@@ -184,12 +190,12 @@ and report loaded library/runtime asset URLs. They do not clear your normal brow
 
 Interpret results:
 
-| DLL | Fresh WASM | Meaning |
-| --- | --- | --- |
-| `支援` | Any | Source DLL still has old/regressed behavior; update the library first. |
-| `支持` | Local publish returns `支援` | Local WASM publish is stale; rebuild/publish. |
-| `支持` | Demo URL returns `支援` | Server/CDN serves old behavior; redeploy/check hosting caches. |
-| `支持` | Demo URL returns `支持` | Current served build passes. An older open tab returning `支援` has stale loaded assets/state. |
+| DLL    | Fresh WASM                   | Meaning                                                                                        |
+|--------|------------------------------|------------------------------------------------------------------------------------------------|
+| `支援` | Any                          | Source DLL still has old/regressed behavior; update the library first.                         |
+| `支持` | Local publish returns `支援` | Local WASM publish is stale; rebuild/publish.                                                  |
+| `支持` | Demo URL returns `支援`      | Server/CDN serves old behavior; redeploy/check hosting caches.                                 |
+| `支持` | Demo URL returns `支持`      | Current served build passes. An older open tab returning `支援` has stale loaded assets/state. |
 
 These checks diagnose behavior rather than claiming a version number uniquely
 identifies the library. A fresh-browser failure cannot be attributed solely to an
