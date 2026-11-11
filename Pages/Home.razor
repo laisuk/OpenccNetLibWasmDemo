@@ -84,7 +84,7 @@
         <option value="shift_jis">Shift-JIS</option>
     </select>
 
-    <button @onclick="ConvertTextAsync">Convert</button>
+    <button class="btn btn-primary" @onclick="ConvertTextAsync">Convert →</button>
 </div>
 
 <div class="row">
@@ -141,7 +141,7 @@
                         <option value="@CustomDictMode.Append">Append</option>
                         <option value="@CustomDictMode.Override">Override</option>
                     </select></label>
-                <button @onclick="() => _dictionaryDrafts.Remove(draft)">Remove</button>
+                <button class="text-danger" @onclick="() => _dictionaryDrafts.Remove(draft)">Remove</button>
             </div>
             <label for="@draft.Id">Entries</label>
             <textarea id="@draft.Id"
@@ -157,7 +157,7 @@
     }
     <div class="toolbar">
         <button @onclick="AddDictionary">Add New Custom Dictionary</button>
-        <button @onclick="ApplyDictionaries">Apply Dictionaries</button>
+        <button @onclick="ApplyDictionaries" class="btn btn-primary">Apply Dictionaries</button>
         <button @onclick="ResetDictionaries">Reset to Default</button>
     </div>
     <p role="status">Active: @(_dictionaries?.ActiveCount ?? 0) custom dictionaries. @_dictionaryStatus</p>

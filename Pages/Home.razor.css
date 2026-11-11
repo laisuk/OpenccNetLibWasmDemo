@@ -171,27 +171,28 @@ button,
     cursor: pointer;
 }
 
+/* Keep Bootstrap .btn variants in control of their own colors. */
 /* Light mode */
-:root:not([data-bs-theme="dark"]) button,
+:root:not([data-bs-theme="dark"]) button:not(.btn),
 :root:not([data-bs-theme="dark"]) .button-like {
     background-color: #e2e6ea;
     border-color: #adb5bd;
 }
 
-:root:not([data-bs-theme="dark"]) button:not(:disabled):hover,
+:root:not([data-bs-theme="dark"]) button:not(.btn):not(:disabled):hover,
 :root:not([data-bs-theme="dark"]) .button-like:hover {
     background-color: #cbd3da;
     border-color: #868e96;
 }
 
 /* Dark mode */
-[data-bs-theme="dark"] button,
+[data-bs-theme="dark"] button:not(.btn),
 [data-bs-theme="dark"] .button-like {
     background-color: #343a40;
     border-color: #6c757d;
 }
 
-[data-bs-theme="dark"] button:not(:disabled):hover,
+[data-bs-theme="dark"] button:not(.btn):not(:disabled):hover,
 [data-bs-theme="dark"] .button-like:hover {
     background-color: #495057;
     border-color: #adb5bd;
