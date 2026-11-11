@@ -1,12 +1,27 @@
 ﻿@inherits LayoutComponentBase
+@inject IJSRuntime Js
+
 <div class="page">
     <div class="sidebar">
-        <NavMenu />
+        <NavMenu/>
     </div>
 
     <main>
         <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            <div class="theme-control">
+                <label for="theme">Theme:</label>
+                <select id="theme"
+                        value="@_theme"
+                        @onchange="OnThemeChangedAsync">
+                    <option value="system">System</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
+
+            <a href="https://github.com/laisuk/OpenccNetLibWasmDemo"
+               target="_blank"
+               rel="noopener noreferrer">GitHub</a>
         </div>
 
         <article class="content px-4">
@@ -14,3 +29,23 @@
         </article>
     </main>
 </div>
+
+@code {
+    private string _theme = "system";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        _theme = await Js.InvokeAsync<string>("openccTheme.get");
+        StateHasChanged();
+    }
+
+    private async Task OnThemeChangedAsync(ChangeEventArgs e)
+    {
+        _theme = e.Value?.ToString() ?? "system";
+        await Js.InvokeVoidAsync("openccTheme.set", _theme);
+    }
+
+}
