@@ -11,17 +11,7 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.15" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.15" PrivateAssets="all" />
         <PackageReference Include="Microsoft.NET.Sdk.WebAssembly.Pack" Version="10.0.15" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <!-- Local console tooling must never enter the browser build or publish output. -->
-        <Compile Remove="cli/**" />
-        <Compile Remove="tests/**" />
-        <Content Remove="tests/**" />
-        <None Remove="tests/**" />
-        <Content Remove="cli/**" />
-        <None Remove="cli/**" />
-    </ItemGroup>
+    </ItemGroup>    
 
     <ItemGroup>
         <!--
