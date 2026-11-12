@@ -1,0 +1,36 @@
+﻿
+# .NET build artifacts
+[Bb]in/
+[Oo]bj/
+artifacts/
+publish/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+*.DotSettings.user
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Local publish output
+publish-*/
