@@ -32,6 +32,9 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+          
+      - name: Verify SDK
+        run: dotnet --version
 
       - name: Install WebAssembly build tools
         run: dotnet workload install wasm-tools
