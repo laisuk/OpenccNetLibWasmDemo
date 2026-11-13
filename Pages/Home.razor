@@ -102,7 +102,7 @@
     }
 
     <small>
-        DOCX, XLSX, PPTX, EPUB, TXT, MD — converted locally in your browser; nothing is uploaded
+        DOCX, XLSX, PPTX, ODT, ODS, ODP, EPUB, TXT, MD — converted locally in your browser; nothing is uploaded
     </small>
     <small>
         TXT/MD auto-detects encoding when enabled; otherwise uses the selected encoding; Office documents and EPUB
@@ -111,7 +111,7 @@
 
     <InputFile id="office-file-input" class="office-file-input"
                OnChange="ConvertOfficeFileAsync"
-               accept=".docx,.xlsx,.pptx,.epub,.txt,.md"/>
+               accept=".docx,.xlsx,.pptx,.odt,.ods,.odp,.epub,.txt,.md"/>
 </div>
 
 @if (_officeDownloadReady && !string.IsNullOrEmpty(_officeOutputName))
@@ -822,7 +822,9 @@
 
     private static bool IsDemoDocumentFormat(string format)
     {
-        return format is "docx" or "xlsx" or "pptx" or "epub" or "txt" or "md";
+        return format is "docx" or "xlsx" or "pptx"
+            or "odt" or "ods" or "odp"
+            or "epub" or "txt" or "md";
     }
 
     private static string ConvertedFileName(string fileName)
@@ -845,6 +847,9 @@
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "pptx" =>
                 "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "odt" => "application/vnd.oasis.opendocument.text",
+            "ods" => "application/vnd.oasis.opendocument.spreadsheet",
+            "odp" => "application/vnd.oasis.opendocument.presentation",
             "epub" => "application/epub+zip",
             "txt" => "text/plain;charset=utf-8",
             "md" => "text/markdown;charset=utf-8",

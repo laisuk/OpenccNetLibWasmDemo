@@ -30,7 +30,7 @@ compatibility normalization, and local document conversion for DOCX, XLSX, PPTX,
 - Custom dictionary validation with transactional Apply and Reset
 - Automatic TXT/MD encoding detection with manual encoding selection
 - Raw text-file byte preservation for encoding recovery
-- DOCX, XLSX, PPTX, EPUB, TXT, and MD conversion
+- DOCX, XLSX, PPTX, ODT, ODS, ODP, EPUB, TXT, and MD conversion
 - Converted document download
 - Browser-local processing with no server upload
 - Static-site compatible
