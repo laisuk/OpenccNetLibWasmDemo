@@ -35,7 +35,7 @@
         <div class="toolbar">
             <button @onclick="PasteAsync">Paste</button>
             <button @onclick="NormalizeAsync">Normalize</button>
-            <button @onclick="ClearInputAsync">Clear</button>
+            <button @onclick="ClearInputAsync">&#x2717; Clear</button>
         </div>
         <div id="editor-left" class="editor-box"></div>
     </div>
@@ -49,8 +49,8 @@
         <div class="toolbar">
             <button @onclick="CopyAsync">Copy</button>
             <button @onclick="DeTofuAsync">DeTofu</button>
-            <button @onclick="ClearOutputAsync">Clear</button>
-            <button @onclick="DownloadOutputAsync">Download</button>
+            <button @onclick="ClearOutputAsync">&#x2717; Clear</button>
+            <button @onclick="DownloadOutputAsync">&#x2913; Download</button>
         </div>
         <div id="editor-right" class="editor-box"></div>
     </div>
@@ -65,7 +65,7 @@
 
 <div class="row file-row">
     <label class="button-like">
-        Open File
+        &#x2912; Open File
         <InputFile id="text-file-input"
                    class="hidden-file-input"
                    OnChange="OpenTextFileAsync"
@@ -94,7 +94,7 @@
 <div id="office-drop" class="office-drop">
     @if (!string.IsNullOrEmpty(_officeInputName))
     {
-        <strong>@_officeInputName</strong>
+        <strong>&#x2709; @_officeInputName</strong>
     }
     else
     {
@@ -118,7 +118,7 @@
 {
     <div class="office-result">
         <span>Ready: @_officeOutputName </span>
-        <button @onclick="DownloadOfficeAsync">Download converted file</button>
+        <button @onclick="DownloadOfficeAsync">&#x2913; Download converted file</button>
     </div>
 }
 
@@ -141,7 +141,7 @@
                         <option value="@CustomDictMode.Append">Append</option>
                         <option value="@CustomDictMode.Override">Override</option>
                     </select></label>
-                <button class="text-danger" @onclick="() => _dictionaryDrafts.Remove(draft)">Remove</button>
+                <button class="text-danger" @onclick="() => _dictionaryDrafts.Remove(draft)">&#x2717; Remove</button>
             </div>
             <label for="@draft.Id">Entries</label>
             <textarea id="@draft.Id"
@@ -150,15 +150,15 @@
                       aria-describedby="dictionary-help"
                       spellcheck="false"
                       placeholder="@("source\ttarget")"></textarea>
-            <button @onpointerdown:preventDefault @onclick="() => InsertDictionaryTabAsync(draft)">Insert Tab at
+            <button @onpointerdown:preventDefault @onclick="() => InsertDictionaryTabAsync(draft)">&#x21e5; Insert Tab at
                 cursor
             </button>
         </div>
     }
     <div class="toolbar">
-        <button @onclick="AddDictionary">Add New Custom Dictionary</button>
-        <button @onclick="ApplyDictionaries" class="btn btn-primary">Apply Dictionaries</button>
-        <button @onclick="ResetDictionaries">Reset to Default</button>
+        <button @onclick="AddDictionary">&#x2b; Add New Custom Dictionary</button>
+        <button @onclick="ApplyDictionaries" class="btn btn-primary">&#x2713; Apply Dictionaries</button>
+        <button @onclick="ResetDictionaries">&#x267B; Reset to Default</button>
     </div>
     <p role="status">Active: @(_dictionaries?.ActiveCount ?? 0) custom dictionaries. @_dictionaryStatus</p>
 </section>
