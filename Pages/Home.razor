@@ -61,6 +61,11 @@
         <input type="checkbox" @bind="_punctuation"/>
         Enable punctuation conversion
     </label>
+    <label
+        title="Convert the downloaded filename using the selected Opencc configuration. The file extension is preserved. Invalid Windows filenames are rejected.">
+        <input type="checkbox" @bind="_convertFilename">
+        Convert filename
+    </label>
 </div>
 
 <div class="row file-row">
@@ -150,8 +155,8 @@
                       aria-describedby="dictionary-help"
                       spellcheck="false"
                       placeholder="@("source\ttarget")"></textarea>
-            <button @onpointerdown:preventDefault @onclick="() => InsertDictionaryTabAsync(draft)">&#x21e5; Insert Tab at
-                cursor
+            <button @onpointerdown:preventDefault @onclick="() => InsertDictionaryTabAsync(draft)">&#x21e5; Insert Tab
+                at cursor
             </button>
         </div>
     }
@@ -234,6 +239,7 @@
 
     private string _config = "s2t";
     private bool _punctuation;
+    private bool _convertFilename;
     private string _status = "Loading engine...";
     private bool _editorsReady;
 
@@ -700,8 +706,8 @@
 
             stopwatch.Stop();
 
-            _officeOutputBytes = outputBytes;
             _officeOutputName = ConvertedFileName(file.Name);
+            _officeOutputBytes = outputBytes;
             _officeOutputMime = GetMimeType(format);
 
             _status =
@@ -827,14 +833,33 @@
             or "epub" or "txt" or "md";
     }
 
-    private static string ConvertedFileName(string fileName)
+    private string ConvertedFileName(string fileName)
     {
         var extension = Path.GetExtension(fileName);
-        var baseName = Path.GetFileNameWithoutExtension(fileName);
+        var stem = Path.GetFileNameWithoutExtension(fileName);
 
-        return string.IsNullOrEmpty(extension)
-            ? $"{fileName}_converted"
-            : $"{baseName}_converted{extension}";
+        // Keep punctuation conversion off for filenames, while honoring
+        // the active converter and any applied custom dictionaries.
+        var convertedStem = _convertFilename
+            ? _cc.Convert(stem, false)
+            : stem;
+
+        // Validate independently of the checkbox: even custom dictionaries
+        // can introduce characters forbidden in Windows filenames.
+        if (string.IsNullOrEmpty(convertedStem) ||
+            convertedStem.Any(ch => ch < 0x20 || "<>:\"/\\|?*".Contains(ch)) ||
+            convertedStem.EndsWith('.') ||
+            convertedStem.EndsWith(' ') ||
+            System.Text.RegularExpressions.Regex.IsMatch(
+                convertedStem,
+                @"^(CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\..*)?$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase |
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant))
+        {
+            throw new InvalidOperationException("Converted filename is invalid for Windows.");
+        }
+
+        return $"{convertedStem}_converted{extension}";
     }
 
     private static string GetMimeType(string format)
