@@ -61,11 +61,6 @@
         <input type="checkbox" @bind="_punctuation"/>
         Enable punctuation conversion
     </label>
-    <label
-        title="Convert the downloaded filename using the selected Opencc configuration. The file extension is preserved. Invalid Windows filenames are rejected.">
-        <input type="checkbox" @bind="_convertFilename">
-        Convert filename
-    </label>
 </div>
 
 <div class="row file-row">
@@ -93,7 +88,15 @@
 </div>
 
 <div class="row">
-    <label><input type="checkbox" @bind="_autoDetectDropEncoding"/> Auto-detect TXT/MD encoding in Drop Zone</label>
+    <label>
+        <input type="checkbox" @bind="_autoDetectDropEncoding"/>
+        Auto-detect TXT/MD encoding in Drop Zone
+    </label>
+    <label
+        title="Convert the downloaded filename using the selected Opencc configuration. The file extension is preserved. Invalid Windows filenames are rejected.">
+        <input type="checkbox" @bind="_convertFilename">
+        Convert filename
+    </label>
 </div>
 
 <div id="office-drop" class="office-drop">
